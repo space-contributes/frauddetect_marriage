@@ -78,7 +78,7 @@ Any issues, concerns, or clarifications regarding this project may be directed t
 
 ### Independent Development
 
-Arby Audio 3D is an **independent, open-source project**. While it draws **inspiration from cinematic-grade audio technologies** such as object-based surround and spatial audio systems, it has **no official affiliation with any company, brand, or trademark holder**.
+This is an **independent, open-source project**. While it draws **inspiration from cinematic-grade audio technologies** such as object-based surround and spatial audio systems, it has **no official affiliation with any company, brand, or trademark holder**.
 
 ### Trademark Notice
 
@@ -103,6 +103,9 @@ Any invocation, deployment, or use of this Tool must strictly comply with the te
 Illegal activities are strictly prohibited.
 
  You are using this tool at your own risk, and it is assumed by the author that you have permission to conduct the sole activities that were intended to be conducted, and the user will be held liable if they had malicious intent or if unlawful actions were taken, as that malicious intent was not of the creator of this ("Service"). The person who has illegal activity should be considered solely liable.
+
+
+You acknowledge that this representation may be based on mock data and/or assumptions that may or may not be true. Scores represent the estimated probability of suspicious activity. They are not definitive. This service is provided on an “as-is” basis, and any misuse of the same shall be considered your sole responsibility and intent.
 
 I shall not be held liable for any security vulnerabilities, weaknesses, or related issues that may arise in connection with the use, deployment, or implementation of the product, service, or material provided. While reasonable efforts may be made to ensure quality and security, no guarantees are given, either express or implied, regarding the absence of vulnerabilities. Any risk arising from the presence or exploitation of such vulnerabilities remains entirely with the user or recipient. I expressly disclaim responsibility for damages, losses, or disruptions caused by security flaws, whether known or unknown at the time of delivery. I express the same for any breach regarding digital and non-digital security. 
 This project is provided ‘as-is’. You assume all responsibility for use. Unauthorized use is illegal. Contributions are subject to the contributor agreement below.
