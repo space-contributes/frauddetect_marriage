@@ -279,12 +279,18 @@ function computeProfileFeatures(p, profiles) {
   const hardBoost = similarProfiles.length>0 ? 0.683/1.5 : 0; // ~0.4553
   const poweredNameSim = Math.pow(nameSimScore,2) + hardBoost;
 
-  const susBoost = 0.14*bioWordSim
-                 + 0.20*phoneReuse
-                 + 0.18*emailReuse
-                 + 0.18*photoContentReuse
-                 + 0.13*photoFilenameReuse
-                 + 0.50*poweredNameSim;
+let susBoost = 0.14*bioWordSim
+             + 0.20*phoneReuse
+             + 0.18*emailReuse
+             + 0.18*photoContentReuse
+             + 0.13*photoFilenameReuse
+             + 0.50*Math.pow(nameSimScore,2);
+
+// Hard flat boost applied separately for matching names
+if(similarProfiles.length > 0){
+    susBoost += 0.455; // ~45% flat boost
+}
+
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
