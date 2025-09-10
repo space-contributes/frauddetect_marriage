@@ -216,19 +216,23 @@ document.getElementById('photoUpload').addEventListener('change', e=>handlePhoto
 function nameSim(a, b) {
   if (!a || !b) return 0;
 
-  // Levenshtein / literal similarity
+  const [aFirst, aLast] = a.toLowerCase().split(' ');
+  const [bFirst, bLast] = b.toLowerCase().split(' ');
+
+  // Literal similarity on full name
   const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
   const maxLen = Math.max(a.length, b.length);
   const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
 
-  // Phonetic similarity (Soundex)
-  const phoneticScore = soundex(a) === soundex(b) ? 0.3 : 0;
+  // Phonetic similarity (Soundex) on last name
+  const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
 
-  // Optional: simple alphabet/rhyme boost: last 2 letters match
-  const rhymeScore = (a.slice(-2).toLowerCase() === b.slice(-2).toLowerCase()) ? 0.2 : 0;
+  // Rhyme boost on last 2 letters of last name
+  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.2 : 0;
 
   return clamp01(literalScore + phoneticScore + rhymeScore);
 }
+
 /* ================= Compute Profile Features ================= */
 /* ================= Compute Profile Features ================= */
 /* ================= Compute Profile Features ================= */
