@@ -149,11 +149,11 @@ const uploadedPhotoHashes = {};
 /* ================= Load Profiles ================= */
 function loadProfilesFromInput(){
   let txt=$('profilesInput').value.trim();
-  if(txt){ 
-    try{ 
-      profiles=JSON.parse(txt); 
-      $('summary').textContent=`${profiles.length} profiles loaded.`; 
-    }catch(e){ alert('Invalid JSON'); return; } 
+  if(txt){
+    try{
+      profiles=JSON.parse(txt);
+      $('summary').textContent=`${profiles.length} profiles loaded.`;
+    }catch(e){ alert('Invalid JSON'); return; }
   }
   $('resultsCard').innerHTML='<div class="muted">Profiles loaded. Ready to run detection.</div>';
 }
@@ -201,7 +201,6 @@ function computeProfileFeatures(p, profiles) {
     const union = new Set([...bioWords, ...qWords]).size;
     return union ? inter/union : 0;
   }));
-  
   const susBoost = clamp01(
     0.2 * bioWordSim + 0.2 * phoneReuseBoost +
     0.15 * emailReuseBoost + 0.15 * photoContentReuseBoost + 0.1 * photoFilenameReuseBoost
@@ -248,9 +247,9 @@ function predictNB(features){
 }
 /* ================= Run Detection ================= */
 $('runBtn').addEventListener('click', async () => {
-    if (!profiles.length) { 
-        alert('Load profiles first'); 
-        return; 
+    if (!profiles.length) {
+        alert('Load profiles first');
+        return;
     }
     const w_linear = parseInt($('w_linear').value) / 100;
     const w_nb = parseInt($('w_nb').value) / 100;
@@ -281,14 +280,20 @@ $('runBtn').addEventListener('click', async () => {
         let lin = await predictLinear(feats);
         let nb = predictNB(feats);
         const noise = Math.random() * 0.05;
-        let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+        let score = 0;
         
         // Find the single best name match
         const nameSimScore = profiles.reduce((maxSim, q) => Math.max(maxSim, (q.id !== p.id ? nameSim(p.name || "", q.name || "") : 0)), 0);
         
-        // Apply the direct name boost if the highest match is >= 0.05
-        const directNameBoost = (nameSimScore >= 0.05) ? 0.39 : 0;
-        score = clamp01(score + directNameBoost);
+        // New logic: set base score and add features if name similarity is high
+        if (nameSimScore > 0.10) {
+            const baseScore = 0.675; // 67.5%
+            const featureScores = w_linear * lin + w_nb * nb + w_noise * noise;
+            score = clamp01(baseScore + featureScores);
+        } else {
+            // Original scoring for profiles with low name similarity
+            score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+        }
 
         results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats, nameSimScore: nameSimScore } });
     }
@@ -311,8 +316,8 @@ $('runBtn').addEventListener('click', async () => {
         const scoreDiv = document.createElement('div');
         scoreDiv.className = 'score';
         if (score < threshHigh) scoreDiv.classList.add('low');
-        else if (score < threshCrit) scoreDiv.classList.add('med'); 
-        else scoreDiv.classList.add('high');                  
+        else if (score < threshCrit) scoreDiv.classList.add('med');
+        else scoreDiv.classList.add('high');
         scoreDiv.textContent = (score * 100).toFixed(1) + '%';
         meta.appendChild(h3);
         meta.appendChild(scoreDiv);
