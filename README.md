@@ -4,6 +4,7 @@
 
 ## 🛡️ **Detect suspicious matrimonial profiles with AI-driven insights — fully local and privacy-conscious.**
 ![Version](https://img.shields.io/badge/version-1.0-blue)
+![Commit milestone](https://img.shields.io/badge/commits-400-orange?style=for-the-badge&logo=git)
 ![Privacy-First](https://img.shields.io/badge/privacy-local-yellow)
 ![Language](https://img.shields.io/badge/language-JavaScript-brightgreen)
 ![Framework](https://img.shields.io/badge/framework-TensorFlow%20JS-blueviolet)
