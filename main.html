@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matrimony Fraud - Aryaman</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+<style>
+:root{
+  --bg:#071026; --card:#081428; --muted:#9aa4b2; --accent:#6ee7b7; --danger:#ff7b7b;
+  --glass: rgba(255,255,255,0.03);
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial;background:linear-gradient(180deg,#04101a,#071026);color:#e6eef6;padding:18px}
+.app{max-width:1100px;margin:0 auto}
+header{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+header h1{margin:0;font-size:20px}
+.sub{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}
+.card{background:var(--card-bg);border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+label{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+textarea,input,select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+button{background:linear-gradient(90deg,var(--accent),#3ad6a5);border:none;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer}
+.small{padding:6px 8px;font-size:13px;border-radius:8px}
+.muted{color:var(--muted);font-size:13px}
+.profile{display:flex;gap:12px;padding:12px;border-radius:10px;margin-bottom:10px;background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005))}
+.avatar{width:72px;height:72px;border-radius:8px;background:#071827;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:28px}
+.meta{flex:1}
+.meta h3{margin:0;font-size:15px}
+.score{min-width:90px;text-align:center;padding:8px;border-radius:8px}
+.score.low{background:rgba(110,231,183,0.06);color:var(--accent)}
+.score.med{background:rgba(255,200,80,0.06);color:#ffd28a}
+.score.high{background:rgba(255,120,120,0.06);color:var(--danger)}
+.reasons{font-size:13px;color:var(--muted);margin-top:8px}
+pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;color:var(--muted)}
+.controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.03)}
+.footer{color:var(--muted);font-size:13px;margin-top:12px}
+@media (max-width:920px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Matrimony Fraud Detector - made by Aryaman M</h1>
+      <div class="sub">Upload/paste profiles (JSON). All processing stays in your browser.</div>
+    </div>
+    <div style="margin-left:auto" class="muted">Local-only</div>
+  </header>
+
+  <div class="grid">
+    <aside class="card">
+      <h3>Input</h3>
+
+      <!-- PHOTO UPLOAD MOVED TO TOP -->
+      <label>Photo Upload</label>
+      <input id="photoUpload" type="file" multiple style="margin-bottom:8px" />
+
+      <label>Upload JSON file (array of profiles)</label>
+      <input id="fileInput" type="file" accept=".json" />
+      <label style="margin-top:8px">Or paste JSON array here:</label>
+      <textarea id="profilesInput" rows="8" placeholder='[{"id":"p1","name":"Asha","bio":"...","phone":"+91...","email":"...","photos":["url"],"activity":{"visits":120,"logs":[...]},"verifications":{"aadhaar":true}}, ...]'></textarea>
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="loadBtn">Load Profiles</button>
+        <button id="clearBtn" class="small">Clear</button>
+      </div>
+
+      <h3 style="margin-top:12px">Model & Ensemble</h3>
+      <div class="controls-row">
+        <button id="trainBtn" class="small">Train Linear Model</button>
+      </div>
+
+      <label style="margin-top:8px">Ensemble weights</label>
+      <div style="display:grid;gap:6px;margin-top:6px">
+        <div><input id="w_linear" type="range" min="0" max="100" value="60"><div class="pill" id="w_linear_v">60</div></div>
+        <div><input id="w_nb" type="range" min="0" max="100" value="30"><div class="pill" id="w_nb_v">30</div></div>
+        <div><input id="w_noise" type="range" min="0" max="100" value="10"><div class="pill" id="w_noise_v">10</div></div>
+      </div>
+
+      <label style="margin-top:8px">Thresholds</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="threshHigh" type="number" min="0" max="100" value="55" class="small" style="width:90px"> <div class="muted">High</div>
+        <input id="threshCrit" type="number" min="0" max="100" value="80" class="small" style="width:90px"> <div class="muted">Critical</div>
+      </div>
+
+      <h3 style="margin-top:12px">Privacy</h3>
+      <div class="muted">This tool performs all detection in-browser. Do not paste private data without consent.</div>
+    </aside>
+
+    <main>
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>Results</strong><div class="muted" id="summary">No profiles loaded.</div></div>
+          <div><span class="pill" id="modelStatus">Model: untrained</span></div>
+        </div>
+      </div>
+
+      <div id="resultsCard" class="card" style="min-height:260px">
+        <div class="muted">Load profiles, train/calibrate (optional), then Run Detection. ⚠️  You acknowledge that this representation may be based on mock data and/or assumptions that may or may not be true. Scores represent the estimated probability of suspicious activity. They are not definitive. This service is provided on an “as-is” basis, and any misuse of the same shall be considered your sole responsibility and intent. You hereby agree to the terms and conditions at: https://github.com/space-contributes/frauddetect_marriage/blob/main/LICENSE.md .</div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <label>Run detection</label>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="runBtn">Run Detection</button>
+          <button id="exportBtn" class="small">Export Results</button>
+        </div>
+        <div style="margin-top:8px" class="muted">Feature set: bio similarity, photo reuse, credential overlap, timing variance, visit frequency, aadhaar verification weight.</div>
+      </div>
+
+      <div class="footer">Tip: best results when you upload many profiles (≥ 10) so cross-profile patterns become meaningful.</div>
+    </main>
+  </div>
+</div>
+
+<!-- Existing JS logic goes below -->
+<script>
+// Example: show ensemble weight values dynamically
+['linear','nb','noise'].forEach(id=>{
+  const slider=document.getElementById('w_'+id);
+  const display=document.getElementById('w_'+id+'_v');
+  slider.addEventListener('input',()=>display.textContent=slider.value);
+});
+
+// Load, clear, train, run detection logic should be here
+  document.getElementById('photoUpload')
+    .addEventListener('change', e => handlePhotoUploads(e.target.files));
+</script>
+
+    </main>
+  </div>
+</div>
+<script>
+
+/* ================= Utilities ================= */
+const $ = id => document.getElementById(id);
+
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function mean(arr){ return arr && arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function std(arr){ if(!arr||arr.length===0)return 0; const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+Math.pow(x-m,2),0)/arr.length); }
+function hashStr(s){ let h=2166136261|0; for(let i=0;i<s.length;i++) h=Math.imul(h^s.charCodeAt(i),16777619); return (h>>>0).toString(16); }
+function clamp01(v){ return Math.max(0,Math.min(1,v)); }
+
+/* ================= Data & Models ================= */
+let profiles=[], results=[], tfModel=null, nbCalib={meanPos:[], stdPos:[], meanNeg:[], stdNeg:[]};
+const uploadedPhotoHashes = {}; // key: filename, value: base64 hash
+
+/* ================= UI ================= */
+$('w_linear').addEventListener('input',()=>{$('w_linear_v').textContent=$('w_linear').value});
+$('w_nb').addEventListener('input',()=>{$('w_nb_v').textContent=$('w_nb').value});
+$('w_noise').addEventListener('input',()=>{$('w_noise_v').textContent=$('w_noise').value});
+
+/* ================= Load Profiles ================= */
+function loadProfilesFromInput(){
+  let txt=$('profilesInput').value.trim();
+  if(txt){ 
+    try{ 
+      profiles=JSON.parse(txt); 
+      $('summary').textContent=`${profiles.length} profiles loaded.`; 
+    }catch(e){ alert('Invalid JSON'); return; } 
+  }
+  $('resultsCard').innerHTML='<div class="muted">Profiles loaded. Ready to run detection.</div>';
+}
+$('loadBtn').addEventListener('click',loadProfilesFromInput);
+$('clearBtn').addEventListener('click',()=>{profiles=[];$('profilesInput').value='';$('resultsCard').innerHTML='<div class="muted">No profiles loaded.</div>';$('summary').textContent='No profiles loaded.';});
+
+/* ================= Name Similarity ================= */
+function levenshtein(a,b){
+  if(!a||!b) return 0;
+  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++) dp[i][0]=i;
+  for(let j=0;j<=b.length;j++) dp[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      if(a[i-1]===b[j-1]) dp[i][j]=dp[i-1][j-1];
+      else dp[i][j]=1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+// --- Simple Soundex function ---
+function soundex(name) {
+  if(!name) return "";
+  const a = name.toUpperCase().split('');
+  const f = a.shift();
+  const codes = {B:1,F:1,P:1,V:1,C:2,G:2,J:2,K:2,Q:2,S:2,X:2,Z:2,D:3,T:3,L:4,M:5,N:5,R:6};
+  let res = f;
+  let prev = codes[f] || 0;
+  a.forEach(c => {
+    const code = codes[c] || 0;
+    if(code !== prev && code !== 0) res += code;
+    prev = code;
+  });
+  return (res + "0000").slice(0,4);
+}
+
+// --- Modify nameSim to include phonetic similarity ---
+function nameSim(a,b){
+  if(!a||!b) return 0;
+  const dist=levenshtein(a.toLowerCase(),b.toLowerCase());
+  const maxLen=Math.max(a.length,b.length);
+  const literalScore = maxLen===0?0:1-dist/maxLen;
+
+  // phonetic boost
+  const phoneticA = soundex(a), phoneticB = soundex(b);
+  const phoneticScore = phoneticA === phoneticB ? 0.3 : 0;
+
+  return clamp01(literalScore + phoneticScore); // boost by 0.3 if they sound similar
+}
+
+
+/* ================= Multi-photo Upload ================= */
+function handlePhotoUploads(files){
+  [...files].forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      uploadedPhotoHashes[file.name]=hashStr(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+document.getElementById('photoUpload').addEventListener('change', e=>handlePhotoUploads(e.target.files));
+
+/* ================= Compute Profile Features ================= */
+function computeProfileFeatures(p,profiles){
+  const logNorm=x=>Math.log1p(x)/Math.log1p(1000);
+  const bioLen=clamp01((p.bio||"").length/500);
+  const bioWords=(p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
+  const photoHashes=(p.photos||[]).map(ph=>uploadedPhotoHashes[ph]||hashStr(ph));
+  const photoHashCount=clamp01([...new Set(photoHashes)].length/5);
+  const aadhaarWeight=p.verifications?.aadhaar?1:0;
+  const activityScore=clamp01(logNorm(p.activity?.visits||p.visits||0));
+  const times=(p.activity?.logs||[]).map(l=>l.time||0);
+  const timingScore=clamp01(std(times)/10);
+  const phoneReuse=profiles.some(q=>q.id!==p.id&&q.phone===p.phone)?1:0;
+  const emailReuse=profiles.some(q=>q.id!==p.id&&q.email===p.email)?1:0;
+  const photoContentReuse=profiles.some(q=>q.id!==p.id&&q.photos?.some(ph=>(uploadedPhotoHashes[ph]||hashStr(ph))&&photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph))))?1:0;
+  const photoFilenameReuse=profiles.some(q=>q.id!==p.id&&q.photos?.some(ph=>p.photos?.includes(ph)))?1:0;
+  const bioWordSim=Math.max(...profiles.map(q=>{if(q.id===p.id)return 0; const qWords=(q.bio||"").toLowerCase().split(/\W+/).filter(Boolean); const inter=bioWords.filter(w=>qWords.includes(w)).length; const union=new Set([...bioWords,...qWords]).size; return union?inter/union:0;}));
+  const nameSimScore=Math.max(...profiles.map(q=>q.id!==p.id?nameSim(p.name||"",q.name||""):0));
+  const susBoost=0.18*bioWordSim+0.20*phoneReuse+0.18*emailReuse+0.18*photoContentReuse+0.13*photoFilenameReuse+0.13*nameSimScore;
+  return [bioLen,photoHashCount,aadhaarWeight,activityScore,timingScore,susBoost];
+}
+
+/* ================= Train Linear + Naive Bayes ================= */
+async function trainLinearAndNB(){
+  if(!profiles||!profiles.length){ alert('Load profiles first'); return; }
+  const X=[],Y=[];
+  profiles.forEach(p=>{ const feats=computeProfileFeatures(p,profiles); X.push(feats); Y.push(feats[5]); });
+  tfModel=tf.sequential();
+  tfModel.add(tf.layers.dense({inputShape:[6],units:1,activation:'sigmoid'}));
+  tfModel.compile({optimizer:'adam',loss:'meanSquaredError'});
+  await tfModel.fit(tf.tensor2d(X),tf.tensor2d(Y,[Y.length,1]),{epochs:40,verbose:0});
+  $('modelStatus').textContent='Linear Model: trained deterministically';
+  const threshold=0.5, pos=X.filter((_,i)=>Y[i]>=threshold), neg=X.filter((_,i)=>Y[i]<threshold);
+  nbCalib={meanPos:[],stdPos:[],meanNeg:[],stdNeg:[]};
+  for(let j=0;j<6;j++){
+    const colPos=pos.map(r=>r[j]), colNeg=neg.map(r=>r[j]);
+    const meanCol=arr=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;
+    const stdCol=arr=>{if(!arr.length)return 0; const m=meanCol(arr); return Math.sqrt(arr.reduce((s,x)=>s+Math.pow(x-m,2),0)/arr.length);};
+    nbCalib.meanPos.push(meanCol(colPos)); nbCalib.stdPos.push(stdCol(colPos)); nbCalib.meanNeg.push(meanCol(colNeg)); nbCalib.stdNeg.push(stdCol(colNeg));
+  }
+  alert('Linear + Naive Bayes trained deterministically using susBoost');
+}
+
+/* ================= Predict Functions ================= */
+async function predictLinear(feats){
+  if(!tfModel) return 0.5;
+  const t=tf.tensor2d([feats]);
+  const out=await tfModel.predict(t).data();
+  t.dispose();
+  return clamp(out[0],0,1);
+}
+
+function predictNB(features){
+  if(!nbCalib) return 0.5;
+  const gaussProb=(x,mu,sigma)=>sigma===0?(x===mu?1:0):(1/(sigma*Math.sqrt(2*Math.PI)))*Math.exp(-0.5*Math.pow((x-mu)/sigma,2));
+  let pPos=1,pNeg=1;
+  for(let i=0;i<features.length;i++){ pPos*=gaussProb(features[i],nbCalib.meanPos[i],nbCalib.stdPos[i]); pNeg*=gaussProb(features[i],nbCalib.meanNeg[i],nbCalib.stdNeg[i]); }
+  return pPos/(pPos+pNeg);
+}
+
+/* ================= Attach Train Button ================= */
+$('trainBtn').addEventListener('click',trainLinearAndNB);
+
+/* ================= Run Detection ================= */
+$('runBtn').addEventListener('click', async () => {
+  if (!profiles.length) { 
+    alert('Load profiles first'); 
+    return; 
+  }
+
+  const w_linear = parseInt($('w_linear').value) / 100;
+  const w_nb = parseInt($('w_nb').value) / 100;
+  const w_noise = parseInt($('w_noise').value) / 100;
+  const threshHigh = parseInt($('threshHigh').value) / 100;
+  const threshCrit = parseInt($('threshCrit').value) / 100;
+
+  results = [];
+  const div = $('resultsCard');
+  div.innerHTML = '';
+
+  for (let p of profiles) {
+    const feats = computeProfileFeatures(p, profiles);
+
+    let lin = 0.5;
+    if (tfModel) {
+      const t = tf.tensor2d([feats]);
+      lin = (await tfModel.predict(t).data())[0];
+      t.dispose();
+      lin = clamp(lin, 0, 1);
+    }
+
+    let nb = nbCalib.meanPos ? predictNB(feats) : 0.5;
+    const noise = Math.random() * 0.05;
+    const score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+
+    results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+
+    const card = document.createElement('div');
+    card.className = 'profile';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = (p.name || '?')[0];
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = p.name || 'Unknown';
+
+    const scoreDiv = document.createElement('div');
+    scoreDiv.className = 'score';
+    if (score < threshHigh) scoreDiv.classList.add('low');
+    else if (score < threshCrit) scoreDiv.classList.add('med');
+    else scoreDiv.classList.add('high');
+    scoreDiv.textContent = (score * 100).toFixed(1) + '%';
+
+    meta.appendChild(h3);
+    meta.appendChild(scoreDiv);
+    card.appendChild(avatar);
+    card.appendChild(meta);
+
+    const exp = document.createElement('details');
+    exp.style.marginTop = '8px';
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify({ linear: lin, nb: nb, features: feats }, null, 2);
+    exp.appendChild(pre);
+    card.appendChild(exp);
+
+    div.appendChild(card);
+  }
+
+  $('summary').textContent = `Processed ${profiles.length} profiles.`;
+});
+
+/* ================ Export Results ================ */
+$('exportBtn').addEventListener('click',()=>{
+  if(!results.length){ alert('Run detection first'); return; }
+  const data=JSON.stringify(results.map(r=>({id:r.profile.id,score:r.score})),null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='fraud_results.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
