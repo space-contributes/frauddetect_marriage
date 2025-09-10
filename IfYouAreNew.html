@@ -1,0 +1,113 @@
+<!-- ================= Shortcut Jump Table + Index ================= -->
+<div style="background:#071026;color:#6ee7b7;padding:8px;border-radius:8px;font-size:14px;">
+  <strong>Jump Table / Index:</strong>
+  <ul>
+    <!-- HTML Sections -->
+    <li><a href="#header" style="color:#6ee7b7">1. Header</a>
+      <ul>
+        <li>h1: Matrimony Fraud Detector title</li>
+        <li>div.sub: subtitle / description</li>
+        <li>div.muted: local-only notice</li>
+      </ul>
+    </li>
+    <li><a href="#sidebar" style="color:#6ee7b7">2. Sidebar / Aside (Input & Controls)</a>
+      <ul>
+        <li>Photo Upload input</li>
+        <li>JSON Upload input</li>
+        <li>Textarea for pasting JSON</li>
+        <li>Load and Clear buttons</li>
+        <li>Model & Ensemble controls
+          <ul>
+            <li>Train Linear Model button</li>
+            <li>Ensemble weight sliders: w_linear, w_nb, w_noise</li>
+          </ul>
+        </li>
+        <li>Threshold inputs: threshHigh, threshCrit</li>
+        <li>Privacy notice</li>
+      </ul>
+    </li>
+    <li><a href="#main" style="color:#6ee7b7">3. Main Section</a>
+      <ul>
+        <li>Results card
+          <ul>
+            <li>Summary of profiles loaded</li>
+            <li>Model status pill</li>
+            <li>Results container (resultsCard)</li>
+            <li>Run Detection / Export Results buttons</li>
+            <li>Feature set description</li>
+          </ul>
+        </li>
+        <li>Footer / tips</li>
+      </ul>
+    </li>
+    <li><a href="#scripts" style="color:#6ee7b7">4. Scripts</a>
+      <ul>
+        <!-- JS Functions -->
+        <li><a href="#utilities" style="color:#6ee7b7">Utilities</a>
+          <ul>
+            <li>clamp(v,min,max)</li>
+            <li>clamp01(v)</li>
+            <li>mean(arr)</li>
+            <li>std(arr)</li>
+            <li>hashStr(s)</li>
+            <li>levenshtein(a,b)</li>
+            <li>soundex(name)</li>
+          </ul>
+        </li>
+        <li><a href="#profileFeatures" style="color:#6ee7b7">Profile Features</a>
+          <ul>
+            <li>computeProfileFeatures(p,profiles)</li>
+          </ul>
+        </li>
+        <li><a href="#photoHandling" style="color:#6ee7b7">Photo Handling</a>
+          <ul>
+            <li>handlePhotoUploads(files)</li>
+          </ul>
+        </li>
+        <li><a href="#nameSimilarity" style="color:#6ee7b7">Name Similarity</a>
+          <ul>
+            <li>nameSim(a,b)</li>
+          </ul>
+        </li>
+        <li><a href="#mlModels" style="color:#6ee7b7">ML Models</a>
+          <ul>
+            <li>trainLinearAndNB()</li>
+            <li>predictLinear(feats)</li>
+            <li>predictNB(features)</li>
+          </ul>
+        </li>
+        <li><a href="#detection" style="color:#6ee7b7">Detection</a>
+          <ul>
+            <li>boostRelativeSuspicion(results)</li>
+            <li>runDetection (inline in event listener)</li>
+          </ul>
+        </li>
+        <li><a href="#uiHandlers" style="color:#6ee7b7">UI / Event Handlers</a>
+          <ul>
+            <li>loadProfilesFromInput()</li>
+            <li>clearProfiles()</li>
+            <li>exportResults()</li>
+            <li>Slider update listeners</li>
+            <li>File input listeners</li>
+            <li>Button listeners</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<!-- Add IDs to sections -->
+<h1 id="header">Matrimony Fraud Detector</h1>
+<aside id="sidebar"> ... </aside>
+<main id="main"> ... </main>
+<div id="resultsCard"> ... </div>
+<script id="scripts">
+  // Utilities: id="utilities"
+  // Profile Features: id="profileFeatures"
+  // Photo Handling: id="photoHandling"
+  // Name Similarity: id="nameSimilarity"
+  // ML Models: id="mlModels"
+  // Detection: id="detection"
+  // UI / Event Handlers: id="uiHandlers"
+</script>
