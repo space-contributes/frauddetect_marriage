@@ -55,11 +55,9 @@ Matrimony Fraud Detector is a **browser-based AI-LIKE tool** that analyzes uploa
 * Adjustable ensemble weights & thresholds for **custom detection sensitivity**
 
 * Real-time visualization of suspicious scores with intuitive color coding:
-
-
-20-35% - LOW 
-40-100% -  HIGH
-RED - EXTREMELY HIGH
+LOW - GREEN
+MEDIUM - YELLOW
+RED - VERY HIGH
 
 * Detailed feature breakdown per profile for audit & transparency
 
