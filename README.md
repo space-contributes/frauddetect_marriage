@@ -151,6 +151,14 @@ All calculations are **performed locally**, ensuring maximum privacy. Compliance
 ---
 
 
+## 🚀 Milestones
+
+- 🎉 100th commit – First working prototype shipped  
+- ⚡ 200th commit – Fraud detection scoring logic improved  
+- 🔥 300th commit – Much advanced with custom algorithms derived from my other project, although not needed in this one, I simplified it so the math is simplified and easy to read.
+- 🏆 400th commit – Major stability release & dataset scaling.
+### All this can't be seen from the Website, it's the squash history which is erased and that branch is gone.
+-----
 ## 🔮 Roadmap
 
 
