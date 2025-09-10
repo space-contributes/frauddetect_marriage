@@ -247,12 +247,17 @@ function nameSim(a, b, totalProfiles = 1) {
 }
 function computeProfileFeatures(p, profiles) {
   const logNorm = x => Math.log1p(x)/Math.log1p(1000);
-  const bioLen = clamp01((p.bio||"").length/500);
+  const clamp01 = v => Math.max(0, Math.min(1, v));
+
+  // Basic bio features
+  const bioLen = clamp01((p.bio||"").length / 500);
   const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
 
-  // Photo hashes
+  // Photos
   const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
   const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
+
+  // Aadhaar verification
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
 
   // Activity
@@ -260,58 +265,56 @@ function computeProfileFeatures(p, profiles) {
   const times = (p.activity?.logs || []).map(l => l.time || 0);
   const timingScore = clamp01(std(times)/10);
 
-  // ------------------ Cross-profile matches ------------------
+  // Credential & content reuse (hard boosts)
+  const phoneReuseBoost = Math.max(0, ...profiles
+    .filter(q => q.id !== p.id && q.phone === p.phone)
+    .map(() => 1.0)
+  );
+
+  const emailReuseBoost = Math.max(0, ...profiles
+    .filter(q => q.id !== p.id && q.email === p.email)
+    .map(() => 1.0)
+  );
+
+  const photoContentReuseBoost = Math.max(0, ...profiles
+    .filter(q => q.id !== p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph] || hashStr(ph))))
+    .map(() => 1.0)
+  );
+
+  const photoFilenameReuseBoost = Math.max(0, ...profiles
+    .filter(q => q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph)))
+    .map(() => 1.0)
+  );
+
   // Bio similarity
-  const bioWordSim = Math.max(...profiles.map(q => {
+  const bioWordSim = Math.max(0, ...profiles.map(q => {
     if(q.id === p.id) return 0;
     const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
     const inter = bioWords.filter(w => qWords.includes(w)).length;
     const union = new Set([...bioWords, ...qWords]).size;
-    return union ? inter/union : 0;
+    return union ? inter / union : 0;
   }));
 
   // Name similarity
-  const nameSimScore = Math.max(...profiles
+  const nameSimScore = Math.max(0, ...profiles
     .filter(q => q.id !== p.id)
-    .map(q => nameSim(p.name || "", q.name || ""))
+    .map(q => nameSim(p.name||"", q.name||""))
   );
 
-  // ------------------ Combined Bio + Name boost ------------------
-  const combinedSim = Math.max(...profiles
-    .filter(q => q.id !== p.id)
-    .map(q => clamp01(bioWordSim + nameSim(p.name||"", q.name||"")))
+  // Hard boost for similar names (flat 0.683 scaled)
+  const nameHardBoost = 0.683 * nameSimScore;
+
+  // Combine all hard boosts
+  const combinedSim = clamp01(bioWordSim + nameHardBoost);
+
+  // Final susBoost with hard boost weighting
+  const susBoost = clamp01(
+      0.40 * combinedSim +      // bio + name hard boost
+      0.20 * phoneReuseBoost +
+      0.15 * emailReuseBoost +
+      0.15 * photoContentReuseBoost +
+      0.10 * photoFilenameReuseBoost
   );
-
-  // ------------------ Phone reuse boost ------------------
-  const phoneReuseBoost = Math.max(...profiles
-    .filter(q => q.id !== p.id && q.phone === p.phone)
-    .map(() => 1.0) // hard boost for exact match
-  ) || 0;
-
-  // ------------------ Email reuse boost ------------------
-  const emailReuseBoost = Math.max(...profiles
-    .filter(q => q.id !== p.id && q.email === p.email)
-    .map(() => 1.0)
-  ) || 0;
-
-  // ------------------ Photo content reuse boost ------------------
-  const photoContentReuseBoost = Math.max(...profiles
-    .filter(q => q.id !== p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph))))
-    .map(() => 1.0)
-  ) || 0;
-
-  // ------------------ Photo filename reuse boost ------------------
-  const photoFilenameReuseBoost = Math.max(...profiles
-    .filter(q => q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph)))
-    .map(() => 1.0)
-  ) || 0;
-
-  // ------------------ Final susBoost ------------------
-  const susBoost = 0.40 * combinedSim +      // bio + name
-                   0.20 * phoneReuseBoost + 
-                   0.15 * emailReuseBoost +
-                   0.15 * photoContentReuseBoost +
-                   0.10 * photoFilenameReuseBoost;
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
