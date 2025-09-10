@@ -246,97 +246,77 @@ function nameSim(a, b, totalProfiles = 1) {
   return Math.pow(score, 2);
 }
 function computeProfileFeatures(p, profiles) {
-  const logNorm = x => Math.log1p(x)/Math.log1p(1000);
   const clamp01 = v => Math.max(0, Math.min(1, v));
+  const logNorm = x => Math.log1p(x)/Math.log1p(1000);
 
-  // Basic bio features
-  const bioLen = clamp01((p.bio||"").length / 500);
   const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
-
-  // Photos
   const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
-  const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
 
-  // Aadhaar verification
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
-
-  // Activity
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
   const times = (p.activity?.logs || []).map(l => l.time || 0);
   const timingScore = clamp01(std(times)/10);
 
-  // Credential & content reuse (hard boosts)
-  const phoneReuseBoost = Math.max(0, ...profiles
-    .filter(q => q.id !== p.id && q.phone === p.phone)
-    .map(() => 1.0)
-  );
+  // Credential/Content reuse
+  const phoneReuseBoost = profiles.some(q => q.id!==p.id && q.phone===p.phone) ? 1 : 0;
+  const emailReuseBoost = profiles.some(q => q.id!==p.id && q.email===p.email) ? 1 : 0;
+  const photoContentReuseBoost = profiles.some(q => q.id!==p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph)))) ? 1 : 0;
+  const photoFilenameReuseBoost = profiles.some(q => q.id!==p.id && q.photos?.some(ph => p.photos?.includes(ph))) ? 1 : 0;
 
-  const emailReuseBoost = Math.max(0, ...profiles
-    .filter(q => q.id !== p.id && q.email === p.email)
-    .map(() => 1.0)
-  );
-
-  const photoContentReuseBoost = Math.max(0, ...profiles
-    .filter(q => q.id !== p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph] || hashStr(ph))))
-    .map(() => 1.0)
-  );
-
-  const photoFilenameReuseBoost = Math.max(0, ...profiles
-    .filter(q => q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph)))
-    .map(() => 1.0)
-  );
-
-  // Bio similarity
-  const bioWordSim = Math.max(0, ...profiles.map(q => {
+  // ------------------ Bio similarity ------------------
+  const bioWordSim = Math.max(...profiles.map(q => {
     if(q.id === p.id) return 0;
     const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
     const inter = bioWords.filter(w => qWords.includes(w)).length;
     const union = new Set([...bioWords, ...qWords]).size;
-    return union ? inter / union : 0;
+    return union ? inter/union : 0;
   }));
 
-  // Name similarity
-  const nameSimScore = Math.max(0, ...profiles
-    .filter(q => q.id !== p.id)
-    .map(q => nameSim(p.name||"", q.name||""))
-  );
+  // ------------------ Name similarity scaled ------------------
+  let nameSimSum = 0;
+  profiles.forEach(q => {
+    if(q.id === p.id) return;
+    const sim = nameSim(p.name||"", q.name||"");
+    nameSimSum += sim;
+  });
+  // Scale by dataset size (more profiles → less per-profile contribution)
+  const nameSimScaled = clamp01(nameSimSum / Math.sqrt(profiles.length));
 
-  // Hard boost for similar names (flat 0.683 scaled)
-  const nameHardBoost = 0.683 * nameSimScore;
-
-  // Combine all hard boosts
-  const combinedSim = clamp01(bioWordSim + nameHardBoost);
-
-  // Final susBoost with hard boost weighting
+  // ------------------ Final susBoost ------------------
   const susBoost = clamp01(
-      0.40 * combinedSim +      // bio + name hard boost
-      0.20 * phoneReuseBoost +
-      0.15 * emailReuseBoost +
-      0.15 * photoContentReuseBoost +
-      0.10 * photoFilenameReuseBoost
+    0.6 * nameSimScaled +        // cross-profile similarity (scaled)
+    0.2 * bioWordSim +
+    0.2 * phoneReuseBoost +
+    0.15 * emailReuseBoost +
+    0.15 * photoContentReuseBoost +
+    0.1 * photoFilenameReuseBoost
   );
+
+  const bioLen = clamp01((p.bio||"").length/500);
+  const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
-// --- Run mutual boost across all profiles ---
-// After computing susBoost for all, iterate and if any two names match >0.7, apply the same flatBoost to both
 function applyMutualBoost(results) {
-    const flatBoostFull = 0.683 / 1.5; 
-    const scaledBoost = flatBoostFull * 0.8 / Math.max(results.length-1,1);
+  if(results.length < 2) return results;
 
-    for(let i=0;i<results.length;i++){
-        for(let j=i+1;j<results.length;j++){
-            if(nameSim(results[i].profile.name, results[j].profile.name) > 0.7){
-                results[i].score += scaledBoost;
-                results[j].score += scaledBoost;
-                results[i].score = clamp01(results[i].score);
-                results[j].score = clamp01(results[j].score);
-            }
-        }
+  for(let i=0; i<results.length; i++) {
+    for(let j=i+1; j<results.length; j++) {
+      const sim = nameSim(results[i].profile.name, results[j].profile.name);
+      if(sim <= 0) continue;
+
+      // Scaled boost based on similarity and dataset size
+      const scaleFactor = 1 / Math.sqrt(results.length); // damping for large datasets
+      const boost = sim * 0.6 * scaleFactor;             // 60% of max possible boost
+
+      results[i].score = clamp01(results[i].score + boost);
+      results[j].score = clamp01(results[j].score + boost);
     }
-    return results;
+  }
+
+  return results;
 }
-  
+
 
   
   /* ================= Name similarity helper ================= */
