@@ -170,21 +170,17 @@ document.getElementById('photoUpload').addEventListener('change', e=>handlePhoto
 /* ================= Name & Feature Functions ================= */
 function nameSim(a, b, totalProfiles = 1) {
   if (!a || !b) return 0;
-  const [aFirst, aLast] = a.toLowerCase().split(' ');
-  const [bFirst, bLast] = b.toLowerCase().split(' ');
-  const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
-  const maxLen = Math.max(a.length, b.length);
+  const aClean = a.toLowerCase().replace(/\s+/g, '');
+  const bClean = b.toLowerCase().replace(/\s+/g, '');
+  const dist = levenshtein(aClean, bClean);
+  const maxLen = Math.max(aClean.length, bClean.length);
   const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
-  let partialBoost = 0;
-  if(aFirst && bFirst && (aFirst.includes(bFirst) || bFirst.includes(aFirst))) partialBoost += 0.2;
-  if(aLast && bLast && (aLast.includes(bLast) || bLast.includes(aLast))) partialBoost += 0.2;
-  const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
-  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.25 : 0;
-  let boost = partialBoost + phoneticScore + rhymeScore;
-  if (boost > 0.5) boost = Math.min(1, boost + 0.5);
+  const aSoundex = soundex(aClean);
+  const bSoundex = soundex(bClean);
+  const phoneticScore = aSoundex === bSoundex ? 0.8 : 0;
   const scaleFactor = 1 / Math.pow(totalProfiles, 0.25);
-  let score = clamp01((literalScore + boost) * scaleFactor);
-  return Math.pow(score, 2);
+  let combinedScore = clamp01((literalScore * 0.5 + phoneticScore * 0.5) * scaleFactor);
+  return Math.pow(combinedScore, 2);
 }
 function computeProfileFeatures(p, profiles) {
   const clamp01 = v => Math.max(0, Math.min(1, v));
