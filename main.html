@@ -1,3 +1,68 @@
+<!-- ================= Index of HTML + JS Functions ================= -->
+
+<!-- 1. Header -->
+<!--     - h1: Matrimony Fraud Detector title -->
+<!--     - div.sub: subtitle / description -->
+<!--     - div.muted: local-only notice -->
+
+<!-- 2. Sidebar / Aside (Input & Controls) -->
+<!--     - Photo Upload input -->
+<!--     - JSON Upload input -->
+<!--     - Textarea for pasting JSON -->
+<!--     - Load and Clear buttons -->
+<!--     - Model & Ensemble controls -->
+<!--         - Train Linear Model button -->
+<!--         - Ensemble weight sliders: w_linear, w_nb, w_noise -->
+<!--     - Threshold inputs: threshHigh, threshCrit -->
+<!--     - Privacy notice -->
+
+<!-- 3. Main Section -->
+<!--     - Results card -->
+<!--         - Summary of profiles loaded -->
+<!--         - Model status pill -->
+<!--         - Results container (resultsCard) -->
+<!--         - Run Detection / Export Results buttons -->
+<!--         - Feature set description -->
+<!--     - Footer / tips -->
+
+<!-- 4. Scripts -->
+
+<!-- ---------------- Utilities ---------------- -->
+<!-- clamp(v, min, max)          → Clamp a number between min and max -->
+<!-- clamp01(v)                  → Clamp a number between 0 and 1 -->
+<!-- mean(arr)                   → Compute mean of an array -->
+<!-- std(arr)                    → Compute standard deviation of an array -->
+<!-- hashStr(s)                  → Hash a string to a hex code -->
+<!-- levenshtein(a, b)           → Compute Levenshtein distance between strings -->
+<!-- soundex(name)               → Compute soundex code for phonetic comparison -->
+
+<!-- ---------------- Profile Features ---------------- -->
+<!-- computeProfileFeatures(p, profiles) → Compute features for a profile (bio, photos, verification, activity, timing, boosts) -->
+
+<!-- ---------------- Photo Handling ---------------- -->
+<!-- handlePhotoUploads(files)   → Read uploaded photos and store hashes -->
+
+<!-- ---------------- Name Similarity ---------------- -->
+<!-- nameSim(a, b)               → Compute combined literal + phonetic similarity score -->
+
+<!-- ---------------- ML Models ---------------- -->
+<!-- trainLinearAndNB()          → Train Linear + Naive Bayes models on profile features -->
+<!-- predictLinear(feats)        → Predict suspicion score using linear model -->
+<!-- predictNB(features)         → Predict suspicion score using Naive Bayes -->
+
+<!-- ---------------- Detection ---------------- -->
+<!-- boostRelativeSuspicion(results) → Adjust scores relative to dataset patterns -->
+<!-- runDetection (inline in event listener) → Full detection loop that computes features, predicts, boosts, and renders results -->
+
+<!-- ---------------- UI / Event Handlers ---------------- -->
+<!-- loadProfilesFromInput()     → Load profiles from textarea -->
+<!-- clearProfiles()             → Clear loaded profiles -->
+<!-- exportResults()             → Export detection results as JSON -->
+<!-- Slider update listeners     → Update display values for ensemble weights -->
+<!-- File input listeners        → Handle JSON/profile file uploads and photo uploads -->
+<!-- Button listeners            → Train, run detection, clear, export -->
+
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -103,6 +168,74 @@ pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;color:var(--muted)}
   </div>
 </div>
 <script>
+
+// ================= Index of HTML + JS Functions =================
+
+// 1. Header
+//     - h1: Matrimony Fraud Detector title
+//     - div.sub: subtitle / description
+//     - div.muted: local-only notice
+
+// 2. Sidebar / Aside (Input & Controls)
+//     - Photo Upload input
+//     - JSON Upload input
+//     - Textarea for pasting JSON
+//     - Load and Clear buttons
+//     - Model & Ensemble controls
+//         - Train Linear Model button
+//         - Ensemble weight sliders: w_linear, w_nb, w_noise
+//     - Threshold inputs: threshHigh, threshCrit
+//     - Privacy notice
+
+// 3. Main Section
+//     - Results card
+//         - Summary of profiles loaded
+//         - Model status pill
+//         - Results container (resultsCard)
+//         - Run Detection / Export Results buttons
+//         - Feature set description
+//     - Footer / tips
+
+// 4. Scripts
+
+// ---------------- Utilities ----------------
+// clamp(v, min, max)          → Clamp a number between min and max
+// clamp01(v)                  → Clamp a number between 0 and 1
+// mean(arr)                   → Compute mean of an array
+// std(arr)                    → Compute standard deviation of an array
+// hashStr(s)                  → Hash a string to a hex code
+// levenshtein(a, b)           → Compute Levenshtein distance between strings
+// soundex(name)               → Compute soundex code for phonetic comparison
+
+// ---------------- Profile Features ----------------
+// computeProfileFeatures(p, profiles) → Compute features for a profile (bio, photos, verification, activity, timing, boosts)
+
+// ---------------- Photo Handling ----------------
+// handlePhotoUploads(files)   → Read uploaded photos and store hashes
+
+// ---------------- Name Similarity ----------------
+// nameSim(a, b)               → Compute combined literal + phonetic similarity score
+
+// ---------------- ML Models ----------------
+// trainLinearAndNB()          → Train Linear + Naive Bayes models on profile features
+// predictLinear(feats)        → Predict suspicion score using linear model
+// predictNB(features)         → Predict suspicion score using Naive Bayes
+
+// ---------------- Detection ----------------
+// boostRelativeSuspicion(results) → Adjust scores relative to dataset patterns
+// runDetection (inline in event listener) → Full detection loop that computes features, predicts, boosts, and renders results
+
+// ---------------- UI / Event Handlers ----------------
+// loadProfilesFromInput()     → Load profiles from textarea
+// clearProfiles()             → Clear loaded profiles
+// exportResults()             → Export detection results as JSON
+// Slider update listeners     → Update display values for ensemble weights
+// File input listeners        → Handle JSON/profile file uploads and photo uploads
+// Button listeners            → Train, run detection, clear, export
+
+
+
+  
 /* ================= Utilities ================= */
 const $ = id => document.getElementById(id);
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
