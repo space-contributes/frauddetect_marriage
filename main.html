@@ -301,7 +301,6 @@ $('runBtn').addEventListener('click', async () => {
   // ================= Cross-profile boosting =================
 function boostRelativeSuspicion(results) {
   if (results.length < 2) return results;
-
   const scores = results.map(r => r.score);
   const minScore = Math.min(...scores);
 
@@ -310,7 +309,7 @@ function boostRelativeSuspicion(results) {
     const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
     let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
 
-    const relativeHigh = r.score >= minScore + 0.2; // 20% higher than peers
+    const relativeHigh = r.score >= minScore + 0.2;
     let boost = 0;
 
     if (relativeHigh) boost = 0.9;
@@ -330,7 +329,6 @@ function boostRelativeSuspicion(results) {
   const div = $('resultsCard');
   div.innerHTML = '';
 
-  results = []; // clear previous resultss results
 
 for (let p of profiles) {
     const feats = computeProfileFeatures(p, profiles);
