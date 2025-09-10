@@ -282,7 +282,6 @@ function predictNB(features){
   for(let i=0;i<features.length;i++){ pPos*=gaussProb(features[i],nbCalib.meanPos[i],nbCalib.stdPos[i]); pNeg*=gaussProb(features[i],nbCalib.meanNeg[i],nbCalib.stdNeg[i]); }
   return pPos/(pPos+pNeg);
 }
-
 /* ================= Attach Train Button ================= */
 $('trainBtn').addEventListener('click',trainLinearAndNB);
 
@@ -299,6 +298,38 @@ $('runBtn').addEventListener('click', async () => {
   const threshHigh = parseInt($('threshHigh').value) / 100;
   const threshCrit = parseInt($('threshCrit').value) / 100;
 
+  // ================= Cross-profile boosting =================
+function boostRelativeSuspicion(results) {
+  if (results.length < 2) return results;
+
+  // Collect scores
+  const scores = results.map(r => r.score);
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+
+  results.forEach(r => {
+    const feats = r.meta.features;
+    // Compute mean per feature across all profiles
+    const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
+    // Count abnormal features (above mean + 0.2)
+    let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
+
+    // Boost logic
+    const relativeHigh = r.score >= minScore + 0.2; // 20% higher than peers
+    let boost = 0;
+
+    if (relativeHigh) boost = 0.9;
+    else if (abnormalCount === 1) boost = 0.25;
+    else if (abnormalCount === 2) boost = 0.55;
+    else if (abnormalCount >= 3) boost = 0.75;
+
+    r.score = clamp01(Math.max(r.score, boost)); // boost only
+  });
+
+  return results;
+}
+
+  
   results = [];
   const div = $('resultsCard');
   div.innerHTML = '';
@@ -319,6 +350,10 @@ $('runBtn').addEventListener('click', async () => {
     const score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
 
     results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+
+    // AFTER finishing the loop over profiles
+    results = boostRelativeSuspicion(results);
+
 
     const card = document.createElement('div');
     card.className = 'profile';
