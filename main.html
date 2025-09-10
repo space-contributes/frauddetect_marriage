@@ -334,7 +334,7 @@ function boostRelativeSuspicion(results) {
   const div = $('resultsCard');
   div.innerHTML = '';
 
-  results = []; // clear previous results
+  results = []; // clear previous resultss results
 
 for (let p of profiles) {
     const feats = computeProfileFeatures(p, profiles);
@@ -354,8 +354,11 @@ for (let p of profiles) {
     results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
 }
 
-// <<< ADD THIS LINE AFTER THE LOOP
+// <<< IMPORTANT: BOOST AFTER LOOP
 results = boostRelativeSuspicion(results);
+
+// <<< THEN render cards as before
+}
 
 // <<< THEN continue rendering cards as before
 
