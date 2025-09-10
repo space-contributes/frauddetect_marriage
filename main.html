@@ -245,68 +245,49 @@ function nameSim(a, b, totalProfiles = 1) {
   // Strong non-linear exaggeration
   return Math.pow(score, 2);
 }
-
 function computeProfileFeatures(p, profiles) {
-  const logNorm = x => Math.log1p(x) / Math.log1p(1000);
-  const bioLen = clamp01((p.bio || "").length / 500);
-  const bioWords = (p.bio || "").toLowerCase().split(/\W+/).filter(Boolean);
+  const logNorm = x => Math.log1p(x)/Math.log1p(1000);
+  const bioLen = clamp01((p.bio||"").length/500);
+  const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
 
-  // Photo-related
-  const photoHashes = (p.photos || []).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
-  const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
+  const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph]||hashStr(ph));
+  const photoHashCount = clamp01([...new Set(photoHashes)].length/5);
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
 
-  // Activity
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
-  const times = (p.activity?.logs || []).map(l => l.time || 0);
-  const timingScore = clamp01(std(times) / 10);
+  const times = (p.activity?.logs || []).map(l=>l.time||0);
+  const timingScore = clamp01(std(times)/10);
 
-  // Credential/Content reuse
-  const phoneReuse = profiles.some(q => q.id !== p.id && q.phone === p.phone) ? 1 : 0;
-  const emailReuse = profiles.some(q => q.id !== p.id && q.email === p.email) ? 1 : 0;
-  const photoContentReuse = profiles.some(q =>
-    q.id !== p.id && q.photos?.some(ph => (uploadedPhotoHashes[ph] || hashStr(ph)) && photoHashes.includes(uploadedPhotoHashes[ph] || hashStr(ph)))
-  ) ? 1 : 0;
-  const photoFilenameReuse = profiles.some(q =>
-    q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph))
-  ) ? 1 : 0;
+  const phoneReuse = profiles.some(q=>q.id!==p.id && q.phone===p.phone)?1:0;
+  const emailReuse = profiles.some(q=>q.id!==p.id && q.email===p.email)?1:0;
+  const photoContentReuse = profiles.some(q=>q.id!==p.id && q.photos?.some(ph=>(uploadedPhotoHashes[ph]||hashStr(ph)) && photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph))))?1:0;
+  const photoFilenameReuse = profiles.some(q=>q.id!==p.id && q.photos?.some(ph=>p.photos?.includes(ph)))?1:0;
 
-  // ------------------ Bio similarity ------------------
-  const bioWordSim = Math.max(...profiles.map(q => {
-    if (q.id === p.id) return 0;
-    const qWords = (q.bio || "").toLowerCase().split(/\W+/).filter(Boolean);
-    const inter = bioWords.filter(w => qWords.includes(w)).length;
-    const union = new Set([...bioWords, ...qWords]).size;
-    return union ? inter / union : 0;
+  const bioWordSim = Math.max(...profiles.map(q=>{
+    if(q.id===p.id) return 0;
+    const qWords=(q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
+    const inter = bioWords.filter(w=>qWords.includes(w)).length;
+    const union = new Set([...bioWords,...qWords]).size;
+    return union?inter/union:0;
   }));
 
-  // ------------------ Name similarity with flat hard boost ------------------
-  const similarProfiles = profiles.filter(q =>
-    q.id !== p.id && nameSim(p.name || "", q.name || "") > 0
-  );
+  // Name similarity only for rhyming/phonetic matches
+  const similarProfiles = profiles.filter(q=>q.id!==p.id && nameSim(p.name||"",q.name||"")>0);
+  const nameSimScore = Math.max(...similarProfiles.map(q=>nameSim(p.name||"",q.name||"")),0);
 
-  // Hard boost: 60% of 68.3% = 0.4098
-  const flatHardBoost = similarProfiles.length > 0 ? 0.683 * 0.6 : 0;
+  // Hard flat boost applied only to similar names
+  const hardBoost = similarProfiles.length>0 ? 0.683/1.5 : 0; // ~0.4553
+  const poweredNameSim = Math.pow(nameSimScore,2) + hardBoost;
 
-  // Name similarity score
-  const nameSimScore = similarProfiles.length
-    ? Math.max(...similarProfiles.map(q => nameSim(p.name || "", q.name || "")))
-    : 0;
-
-  // Apply strong non-linear boost plus flat hard boost
-  const poweredNameSim = Math.pow(nameSimScore, 2) + flatHardBoost;
-
-  // ------------------ Final susBoost ------------------
-  const susBoost = 0.14 * bioWordSim
-                 + 0.20 * phoneReuse
-                 + 0.18 * emailReuse
-                 + 0.18 * photoContentReuse
-                 + 0.13 * photoFilenameReuse
-                 + 0.50 * poweredNameSim; // name similarity has strong influence
+  const susBoost = 0.14*bioWordSim
+                 + 0.20*phoneReuse
+                 + 0.18*emailReuse
+                 + 0.18*photoContentReuse
+                 + 0.13*photoFilenameReuse
+                 + 0.50*poweredNameSim;
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
-
 // --- Run mutual boost across all profiles ---
 // After computing susBoost for all, iterate and if any two names match >0.7, apply the same flatBoost to both
 function applyMutualBoost(results) {
