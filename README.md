@@ -51,6 +51,8 @@ Matrimony Fraud Detector is a **browser-based AI-LIKE tool** that analyzes uploa
 
 * Multi-layered scoring: **Linear model + Naive Bayes ensemble**
 
+* Interactive controls: Sliders for ensemble weights, thresholds, and the real-time results display make it highly usable and experimentable.
+
 * Fully **in-browser execution**: no data leaves your device
 
 * Adjustable ensemble weights & thresholds for **custom detection sensitivity**
@@ -74,6 +76,8 @@ RED - VERY HIGH
 * **Bio Analysis** – Detect overlapping phrases or word patterns across profiles
 
 * **Photo Reuse Detection** – Matches photo content or filenames across profiles
+
+* **Customization** - Sliders for ensemble weights, thresholds, and the real-time results display make it highly usable and experimentable.
 
 * **Credential Overlap** – Detects reused phone numbers and emails
 
@@ -157,7 +161,7 @@ All calculations are **performed locally**, ensuring maximum privacy. Compliance
 - ⚡ 200th commit – Fraud detection scoring logic improved  
 - 🔥 300th commit – Much advanced with custom algorithms derived from my other project, although not needed in this one, I simplified it so the math is simplified and easy to read.
 - 🏆 400th commit – Major stability release & dataset scaling.
-### All this can't be seen from the Website, it's the squash history which is erased and that branch is gone.
+### All this can't be seen from the Website, it's the squash history which is erased, and that branch is gone.
 -----
 ## 🔮 Roadmap
 
