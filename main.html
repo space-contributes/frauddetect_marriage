@@ -319,7 +319,7 @@ function boostRelativeSuspicion(results) {
     let boost = 0;
 
     if (relativeHigh) boost = 0.9;
-    else if (abnormalCount === 1) boost = 0.25;
+    else if (abnormalCount === 1) boost = 0.56;
     else if (abnormalCount === 2) boost = 0.55;
     else if (abnormalCount >= 3) boost = 0.75;
 
@@ -371,11 +371,9 @@ function boostRelativeSuspicion(results) {
     const scoreDiv = document.createElement('div');
     scoreDiv.className = 'score';
     if (score < threshHigh) scoreDiv.classList.add('low');
-    else // Make 67%+ show as high
-if (score < threshHigh) scoreDiv.classList.add('low');
-else if (score < 0.67) scoreDiv.classList.add('med');  // medium below 67%
-else scoreDiv.classList.add('high');                   // 67%+ is high
-
+    else if (score < threshCrit) scoreDiv.classList.add('med');
+    else scoreDiv.classList.add('high');
+    scoreDiv.textContent = (score * 100).toFixed(1) + '%';
 
     meta.appendChild(h3);
     meta.appendChild(scoreDiv);
