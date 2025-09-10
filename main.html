@@ -168,7 +168,7 @@ function handlePhotoUploads(files){
 }
 document.getElementById('photoUpload').addEventListener('change', e=>handlePhotoUploads(e.target.files));
 /* ================= Name & Feature Functions ================= */
-function nameSim(a, b, totalProfiles = 1) {
+function nameSim(a, b) {
   if (!a || !b) return 0;
   const aClean = a.toLowerCase().replace(/\s+/g, '');
   const bClean = b.toLowerCase().replace(/\s+/g, '');
@@ -177,10 +177,9 @@ function nameSim(a, b, totalProfiles = 1) {
   const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
   const aSoundex = soundex(aClean);
   const bSoundex = soundex(bClean);
-  const phoneticScore = aSoundex === bSoundex ? 0.8 : 0;
-  const scaleFactor = 1 / Math.pow(totalProfiles, 0.25);
-  let combinedScore = clamp01((literalScore * 0.5 + phoneticScore * 0.5) * scaleFactor);
-  return Math.pow(combinedScore, 2);
+  const phoneticScore = aSoundex === bSoundex ? 1.0 : 0;
+  let combinedScore = clamp01((literalScore * 0.2 + phoneticScore * 0.8));
+  return combinedScore;
 }
 function computeProfileFeatures(p, profiles) {
   const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -202,15 +201,9 @@ function computeProfileFeatures(p, profiles) {
     const union = new Set([...bioWords, ...qWords]).size;
     return union ? inter/union : 0;
   }));
-  let nameSimSum = 0;
-  profiles.forEach(q => {
-    if(q.id === p.id) return;
-    const sim = nameSim(p.name||"", q.name||"");
-    nameSimSum += sim;
-  });
-  const nameSimScaled = clamp01(nameSimSum / Math.sqrt(profiles.length));
+  
   const susBoost = clamp01(
-    0.6 * nameSimScaled + 0.2 * bioWordSim + 0.2 * phoneReuseBoost +
+    0.2 * bioWordSim + 0.2 * phoneReuseBoost +
     0.15 * emailReuseBoost + 0.15 * photoContentReuseBoost + 0.1 * photoFilenameReuseBoost
   );
   const bioLen = clamp01((p.bio||"").length/500);
@@ -221,7 +214,7 @@ function computeProfileFeatures(p, profiles) {
 async function trainLinearAndNB(){
   if(!profiles||!profiles.length){ alert('Load profiles first'); return; }
   const X=[],Y=[];
-  profiles.forEach(p=>{ const feats=computeProfileFeatures(p,profiles); X.push(feats); Y.push(feats[5]); });
+  profiles.forEach(p=>{ const feats=computeProfileFeatures(p,profiles); X.push(feats.slice(0,6)); Y.push(feats[5]); });
   tfModel=tf.sequential();
   tfModel.add(tf.layers.dense({inputShape:[6],units:1,activation:'sigmoid'}));
   tfModel.compile({optimizer:'adam',loss:'meanSquaredError'});
@@ -289,7 +282,15 @@ $('runBtn').addEventListener('click', async () => {
         let nb = predictNB(feats);
         const noise = Math.random() * 0.05;
         let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
-        results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+        
+        // Find the single best name match
+        const nameSimScore = profiles.reduce((maxSim, q) => Math.max(maxSim, (q.id !== p.id ? nameSim(p.name || "", q.name || "") : 0)), 0);
+        
+        // Apply the direct name boost if the highest match is >= 0.05
+        const directNameBoost = (nameSimScore >= 0.05) ? 0.39 : 0;
+        score = clamp01(score + directNameBoost);
+
+        results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats, nameSimScore: nameSimScore } });
     }
     results = boostRelativeSuspicion(results);
     results.sort((a,b) => b.score - a.score);
@@ -317,7 +318,7 @@ $('runBtn').addEventListener('click', async () => {
         meta.appendChild(scoreDiv);
         const reasons = document.createElement('div');
         reasons.className = 'reasons';
-        reasons.textContent = `Bio Sim: ${r.meta.features[5].toFixed(2)}, Name Sim: ${r.meta.features[0].toFixed(2)}`;
+        reasons.textContent = `Bio Sim: ${r.meta.features[5].toFixed(2)}, Name Sim: ${r.meta.nameSimScore.toFixed(2)}`;
         meta.appendChild(reasons);
         const exp = document.createElement('details');
         exp.style.marginTop = '8px';
