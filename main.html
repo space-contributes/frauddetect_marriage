@@ -197,44 +197,21 @@ function soundex(name) {
   return (res + "0000").slice(0,4);
 }
 
-// --- Modify nameSim to include phonetic similarity ---
-// --- Improved Name Similarity with Phonetic Boost ---
-// --- Improved Name Similarity with Phonetic Boost ---
-function nameSim(a, b) {
-  if (!a || !b) return 0;
+// Compute name similarity with all other profiles (mutual)
+const nameSimScore = Math.max(...profiles
+  .filter(q => q.id !== p.id)
+  .map(q => nameSim(p.name || "", q.name || ""))
+);
 
-  const aLow = a.toLowerCase();
-  const bLow = b.toLowerCase();
+// Apply strong non-linear boost
+const poweredNameSim = Math.pow(nameSimScore, 2); // increase exponent for stronger effect
 
-  // 1️⃣ Levenshtein literal similarity
-  const dist = levenshtein(aLow, bLow);
-  const maxLen = Math.max(aLow.length, bLow.length);
-  const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
-
-  // 2️⃣ Letter overlap fraction
-  const lettersA = aLow.split('').filter(c => /[a-z]/.test(c));
-  const lettersB = bLow.split('').filter(c => /[a-z]/.test(c));
-  const intersect = lettersA.filter(c => lettersB.includes(c)).length;
-  const union = new Set([...lettersA, ...lettersB]).size || 1;
-  const letterScore = intersect / union;
-
-  // 3️⃣ Phonetic similarity (Soundex)
-  function phoneticSim(x, y) {
-    const sa = soundex(x);
-    const sb = soundex(y);
-    let matches = 0;
-    for (let i = 0; i < Math.min(sa.length, sb.length); i++) {
-      if (sa[i] === sb[i]) matches++;
-    }
-    return matches / sa.length;
-  }
-  const phoneticScore = phoneticSim(a, b);
-
-  // 4️⃣ Combine aggressively for hard boost
-  const combined = literalScore * 0.4 + letterScore * 0.3 + phoneticScore * 0.8;
-
-  return clamp01(combined);
-}
+const susBoost = 0.14*bioWordSim 
+               + 0.20*phoneReuse 
+               + 0.18*emailReuse 
+               + 0.18*photoContentReuse 
+               + 0.13*photoFilenameReuse 
+               + 0.50*poweredNameSim;
 
 
 
