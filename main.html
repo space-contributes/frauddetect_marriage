@@ -330,67 +330,53 @@ function boostRelativeSuspicion(results) {
   div.innerHTML = '';
 
 
-for (let p of profiles) {
-    const feats = computeProfileFeatures(p, profiles);
-
-    let lin = 0.5;
-    if (tfModel) {
-      const t = tf.tensor2d([feats]);
-      lin = (await tfModel.predict(t).data())[0];
-      t.dispose();
-      lin = clamp(lin, 0, 1);
-    }
-
-    let nb = nbCalib.meanPos ? predictNB(feats) : 0.5;
-    const noise = Math.random() * 0.05;
-    const score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
-
-    results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
-}
-
 // <<< IMPORTANT: BOOST AFTER LOOP
-// After processing all profiles
 results = boostRelativeSuspicion(results);
 
+// Render results cards safely
+const div = $('resultsCard');
+div.innerHTML = '';
 
+results.forEach(r => {
+  const p = r.profile;
+  const score = r.score;
 
-    const card = document.createElement('div');
-    card.className = 'profile';
+  const card = document.createElement('div');
+  card.className = 'profile';
 
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = (p.name || '?')[0];
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = (p.name || '?')[0];
 
-    const meta = document.createElement('div');
-    meta.className = 'meta';
+  const meta = document.createElement('div');
+  meta.className = 'meta';
 
-    const h3 = document.createElement('h3');
-    h3.textContent = p.name || 'Unknown';
+  const h3 = document.createElement('h3');
+  h3.textContent = p.name || 'Unknown';
 
-    const scoreDiv = document.createElement('div');
-    scoreDiv.className = 'score';
-    if (score < threshHigh) scoreDiv.classList.add('low');
-    else if (score < threshCrit) scoreDiv.classList.add('med');
-    else scoreDiv.classList.add('high');
-    scoreDiv.textContent = (score * 100).toFixed(1) + '%';
+  const scoreDiv = document.createElement('div');
+  scoreDiv.className = 'score';
+  if (score < threshHigh) scoreDiv.classList.add('low');
+  else if (score < threshCrit) scoreDiv.classList.add('med');
+  else scoreDiv.classList.add('high');
+  scoreDiv.textContent = (score * 100).toFixed(1) + '%';
 
-    meta.appendChild(h3);
-    meta.appendChild(scoreDiv);
-    card.appendChild(avatar);
-    card.appendChild(meta);
+  meta.appendChild(h3);
+  meta.appendChild(scoreDiv);
+  card.appendChild(avatar);
+  card.appendChild(meta);
 
-    const exp = document.createElement('details');
-    exp.style.marginTop = '8px';
-    const pre = document.createElement('pre');
-    pre.textContent = JSON.stringify({ linear: lin, nb: nb, features: feats }, null, 2);
-    exp.appendChild(pre);
-    card.appendChild(exp);
+  const exp = document.createElement('details');
+  exp.style.marginTop = '8px';
+  const pre = document.createElement('pre');
+  pre.textContent = JSON.stringify(r.meta, null, 2);
+  exp.appendChild(pre);
+  card.appendChild(exp);
 
-    div.appendChild(card);
-  }
-
-  $('summary').textContent = `Processed ${profiles.length} profiles.`;
+  div.appendChild(card);
 });
+
+$('summary').textContent = `Processed ${profiles.length} profiles.`;
 
 /* ================ Export Results ================ */
 $('exportBtn').addEventListener('click',()=>{
