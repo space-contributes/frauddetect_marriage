@@ -334,7 +334,9 @@ function boostRelativeSuspicion(results) {
   const div = $('resultsCard');
   div.innerHTML = '';
 
-  for (let p of profiles) {
+  results = []; // clear previous results
+
+for (let p of profiles) {
     const feats = computeProfileFeatures(p, profiles);
 
     let lin = 0.5;
@@ -350,8 +352,15 @@ function boostRelativeSuspicion(results) {
     const score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
 
     results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+}
 
-    // AFTER finishing the loop over profiles
+// <<< ADD THIS LINE AFTER THE LOOP
+results = boostRelativeSuspicion(results);
+
+// <<< THEN continue rendering cards as before
+
+  
+  // AFTER finishing the loop over profiles
     results = boostRelativeSuspicion(results);
 
 
