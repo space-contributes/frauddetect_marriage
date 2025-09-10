@@ -213,81 +213,136 @@ function handlePhotoUploads(files){
 }
 document.getElementById('photoUpload').addEventListener('change', e=>handlePhotoUploads(e.target.files));
 // Name similarity function (with phonetic + alphabet/rhyming boost)
-function nameSim(a, b) {
+function nameSim(a, b, totalProfiles = 1) {
   if (!a || !b) return 0;
 
   const [aFirst, aLast] = a.toLowerCase().split(' ');
   const [bFirst, bLast] = b.toLowerCase().split(' ');
 
-  // Literal similarity on full name
+  // Literal similarity
   const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
   const maxLen = Math.max(a.length, b.length);
   const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
 
-  // Phonetic similarity (Soundex) on last name
+  // Partial match boosts
+  let partialBoost = 0;
+  if(aFirst && bFirst && (aFirst.includes(bFirst) || bFirst.includes(aFirst))) partialBoost += 0.2;
+  if(aLast && bLast && (aLast.includes(bLast) || bLast.includes(aLast))) partialBoost += 0.2;
+
+  // Phonetic (Soundex) boost
   const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
 
   // Rhyme boost on last 2 letters of last name
-  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.2 : 0;
+  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.25 : 0;
 
-  return clamp01(literalScore + phoneticScore + rhymeScore);
+  // Combine all boosts
+  let score = literalScore + partialBoost + phoneticScore + rhymeScore;
+
+  // Scale based on number of profiles (more profiles → less impact)
+  const scaleFactor = 1 / Math.sqrt(totalProfiles); // simple damping
+  score = clamp01(score * scaleFactor);
+
+  // Strong non-linear exaggeration
+  return Math.pow(score, 2);
 }
+
 
 /* ================= Compute Profile Features ================= */
 /* ================= Compute Profile Features ================= */
 /* ================= Compute Profile Features ================= */
 function computeProfileFeatures(p, profiles) {
-  const logNorm = x => Math.log1p(x)/Math.log1p(1000);
-  const bioLen = clamp01((p.bio||"").length/500);
-  const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
+  const logNorm = x => Math.log1p(x) / Math.log1p(1000);
+  const bioLen = clamp01((p.bio || "").length / 500);
+  const bioWords = (p.bio || "").toLowerCase().split(/\W+/).filter(Boolean);
 
-  // Photo-related
-  const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
+  // ---------------- Photo features ----------------
+  const photoHashes = (p.photos || []).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
   const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
 
-  // Activity
+  // ---------------- Activity features ----------------
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
   const times = (p.activity?.logs || []).map(l => l.time || 0);
-  const timingScore = clamp01(std(times)/10);
+  const timingScore = clamp01(std(times) / 10);
 
-  // Credential/Content reuse
+  // ---------------- Credential / Content Reuse ----------------
   const phoneReuse = profiles.some(q => q.id !== p.id && q.phone === p.phone) ? 1 : 0;
   const emailReuse = profiles.some(q => q.id !== p.id && q.email === p.email) ? 1 : 0;
   const photoContentReuse = profiles.some(q =>
-    q.id !== p.id && q.photos?.some(ph => (uploadedPhotoHashes[ph]||hashStr(ph)) && photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph)))
+    q.id !== p.id &&
+    q.photos?.some(ph => (uploadedPhotoHashes[ph] || hashStr(ph)) && photoHashes.includes(uploadedPhotoHashes[ph] || hashStr(ph)))
   ) ? 1 : 0;
   const photoFilenameReuse = profiles.some(q =>
     q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph))
   ) ? 1 : 0;
 
-  // ------------------ Bio similarity ------------------
+  // ---------------- Bio similarity ----------------
   const bioWordSim = Math.max(...profiles.map(q => {
-    if(q.id === p.id) return 0;
-    const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
+    if (q.id === p.id) return 0;
+    const qWords = (q.bio || "").toLowerCase().split(/\W+/).filter(Boolean);
     const inter = bioWords.filter(w => qWords.includes(w)).length;
     const union = new Set([...bioWords, ...qWords]).size;
-    return union ? inter/union : 0;
+    return union ? inter / union : 0;
   }));
 
-  // ------------------ Name similarity ------------------
+  // ---------------- Name similarity ----------------
+  const totalProfiles = profiles.length;
   const nameSimScore = Math.max(...profiles
     .filter(q => q.id !== p.id)
-    .map(q => nameSim(p.name || "", q.name || ""))
+    .map(q => nameSim(p.name || "", q.name || "", totalProfiles))
   );
 
-  // Apply strong non-linear boost for name similarity
-  const poweredNameSim = Math.pow(nameSimScore, 2); // increase exponent for stronger influence
-
-  // ------------------ Final susBoost ------------------
+  // ---------------- Final susBoost ----------------
   const susBoost = 0.14 * bioWordSim
                  + 0.20 * phoneReuse
                  + 0.18 * emailReuse
                  + 0.18 * photoContentReuse
                  + 0.13 * photoFilenameReuse
-                 + 0.50 * poweredNameSim; // strong influence
+                 + 0.50 * nameSimScore; // strong influence
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
+}
+
+/* ================= Name similarity helper ================= */
+function nameSim(a, b, totalProfiles = 1) {
+  if (!a || !b) return 0;
+
+  const [aFirst, aLast] = a.toLowerCase().split(' ');
+  const [bFirst, bLast] = b.toLowerCase().split(' ');
+
+  // Literal similarity
+  const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
+  const maxLen = Math.max(a.length, b.length);
+  const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
+
+  // Partial match boosts
+  let partialBoost = 0;
+  if (aFirst && bFirst && (aFirst.includes(bFirst) || bFirst.includes(aFirst))) partialBoost += 0.2;
+  if (aLast && bLast && (aLast.includes(bLast) || bLast.includes(aLast))) partialBoost += 0.2;
+
+  // Phonetic (Soundex) boost
+  const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
+
+  // Rhyme boost on last 2 letters of last name
+  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.25 : 0;
+
+  // Combine all boosts
+  let score = literalScore + partialBoost + phoneticScore + rhymeScore;
+
+  // Scale based on number of profiles (more profiles → less impact)
+// Partial / phonetic / rhyme base score
+let boost = partialBoost + phoneticScore + rhymeScore;
+
+// Strong match override: if phonetic + rhyme > 0.5, apply hard boost
+if (boost > 0.5) boost = Math.min(1, boost + 0.5);
+
+// Scale for number of profiles (damping), but less aggressive
+const scaleFactor = 1 / Math.pow(totalProfiles, 0.25); // sqrt -> 4th root
+score = clamp01((literalScore + boost) * scaleFactor);
+
+
+  // Strong non-linear exaggeration
+  return Math.pow(score, 2);
 }
 
 
