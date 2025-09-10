@@ -371,9 +371,11 @@ function boostRelativeSuspicion(results) {
     const scoreDiv = document.createElement('div');
     scoreDiv.className = 'score';
     if (score < threshHigh) scoreDiv.classList.add('low');
-    else if (score < threshCrit) scoreDiv.classList.add('med');
-    else scoreDiv.classList.add('high');
-    scoreDiv.textContent = (score * 100).toFixed(1) + '%';
+    else // Make 67%+ show as high
+if (score < threshHigh) scoreDiv.classList.add('low');
+else if (score < 0.67) scoreDiv.classList.add('med');  // medium below 67%
+else scoreDiv.classList.add('high');                   // 67%+ is high
+
 
     meta.appendChild(h3);
     meta.appendChild(scoreDiv);
