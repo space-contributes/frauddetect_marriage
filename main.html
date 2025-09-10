@@ -302,32 +302,28 @@ $('runBtn').addEventListener('click', async () => {
 function boostRelativeSuspicion(results) {
   if (results.length < 2) return results;
 
-  // Collect scores
   const scores = results.map(r => r.score);
-  const maxScore = Math.max(...scores);
   const minScore = Math.min(...scores);
 
   results.forEach(r => {
     const feats = r.meta.features;
-    // Compute mean per feature across all profiles
     const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
-    // Count abnormal features (above mean + 0.2)
     let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
 
-    // Boost logic
     const relativeHigh = r.score >= minScore + 0.2; // 20% higher than peers
     let boost = 0;
 
     if (relativeHigh) boost = 0.9;
-    else if (abnormalCount === 1) boost = 0.56;
+    else if (abnormalCount === 1) boost = 0.25;
     else if (abnormalCount === 2) boost = 0.55;
     else if (abnormalCount >= 3) boost = 0.75;
 
-    r.score = clamp01(Math.max(r.score, boost)); // boost only
+    r.score = clamp01(Math.max(r.score, boost));
   });
 
   return results;
 }
+
 
   
   results = [];
@@ -355,16 +351,9 @@ for (let p of profiles) {
 }
 
 // <<< IMPORTANT: BOOST AFTER LOOP
+// After processing all profiles
 results = boostRelativeSuspicion(results);
 
-// <<< THEN render cards as before
-}
-
-// <<< THEN continue rendering cards as before
-
-  
-  // AFTER finishing the loop over profiles
-    results = boostRelativeSuspicion(results);
 
 
     const card = document.createElement('div');
