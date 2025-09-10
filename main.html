@@ -286,14 +286,18 @@ $('runBtn').addEventListener('click', async () => {
         const nameSimScore = profiles.reduce((maxSim, q) => Math.max(maxSim, (q.id !== p.id ? nameSim(p.name || "", q.name || "") : 0)), 0);
         
         // New logic: set base score and add features if name similarity is high
-        if (nameSimScore > 0.10) {
-            const baseScore = 0.675; // 67.5%
-            const featureScores = w_linear * lin + w_nb * nb + w_noise * noise;
-            score = clamp01(baseScore + featureScores);
-        } else {
-            // Original scoring for profiles with low name similarity
-            score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
-        }
+      // New logic: set base score dynamically based on dataset size (only if > 4 profiles)
+if (profiles.length > 4 && nameSimScore > 0.10) {
+    const simCount = profiles.filter(q => q.id !== p.id && nameSim(p.name || "", q.name || "") > 0.10).length;
+    const simRatio = simCount / Math.max(1, (profiles.length - 1));
+    // Base score scales with overlap ratio and dataset size
+    const baseScore = 0.4 + 0.4 * simRatio; // between 40% and 80%
+    const featureScores = w_linear * lin + w_nb * nb + w_noise * noise;
+    score = clamp01(baseScore + featureScores);
+} else {
+    // Original scoring for small datasets or low similarity
+    score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+}
 
         results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats, nameSimScore: nameSimScore } });
     }
