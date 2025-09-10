@@ -291,20 +291,25 @@ function computeProfileFeatures(p, profiles) {
     .map(q => nameSim(p.name || "", q.name || ""))
   );
 
-  // ------------------ Hard name boost ------------------
-  const HARD_BOOST_MAX = 0.683;           // 68.3% max boost
-  const numOtherProfiles = profiles.length - 1 || 1; // avoid divide by zero
-  const scaledHardBoost = HARD_BOOST_MAX / numOtherProfiles; // scale by dataset size
-  const poweredNameSim = nameSimScore + scaledHardBoost;
-  const cappedNameSim = Math.min(poweredNameSim, 0.69); // cap at 69%
+  // ------------------ Hard boost for all phonetic/rhyming matches ------------------
+  const HARD_BOOST_MAX = 0.683;                 // 68.3% hard boost
+  let hardBoost = 0;
+  profiles.forEach(q => {
+    if(q.id !== p.id && nameSim(p.name || "", q.name || "") > 0) {
+      // Apply 60% of hard boost if there's any name similarity
+      hardBoost = Math.max(hardBoost, HARD_BOOST_MAX * 0.6);
+    }
+  });
 
-  // ------------------ Final suspicion boost ------------------
+  const finalNameScore = clamp01(nameSimScore + hardBoost);
+
+  // ------------------ Final susBoost ------------------
   const susBoost = 0.14 * bioWordSim
                  + 0.20 * phoneReuse
                  + 0.18 * emailReuse
                  + 0.18 * photoContentReuse
                  + 0.13 * photoFilenameReuse
-                 + 0.50 * cappedNameSim; // strong influence
+                 + 0.50 * finalNameScore; // include 60% hard boost here
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
