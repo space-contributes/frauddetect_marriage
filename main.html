@@ -297,7 +297,14 @@ function nameSim(a, b, totalProfiles = 1) {
   // ------------------ HARD FLAT BOOST ------------------
   const HARD_NAME_BOOST = 0.683 / 1.5; // scaled hard boost ≈ 0.455
   const highNameSim = profiles.some(q => q.id !== p.id && nameSim(p.name, q.name) > 0.7); // threshold
-  const flatBoost = highNameSim ? HARD_NAME_BOOST : 0;
+  // ------------------ HARD FLAT BOOST (mutual) ------------------
+let flatBoost = 0;
+profiles.forEach(q => {
+    if (q.id !== p.id && nameSim(p.name, q.name) > 0.7) {
+        flatBoost = 0.683 / 1.5; // 0.455 hard boost
+    }
+});
+
 
   // ------------------ Final susBoost ------------------
   const susBoost = 0.14 * bioWordSim
