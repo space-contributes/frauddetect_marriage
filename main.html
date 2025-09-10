@@ -287,61 +287,105 @@ $('trainBtn').addEventListener('click',trainLinearAndNB);
 
 /* ================= Run Detection ================= */
 $('runBtn').addEventListener('click', async () => {
-  if (!profiles.length) { 
-    alert('Load profiles first'); 
-    return; 
-  }
+    if (!profiles.length) { 
+        alert('Load profiles first'); 
+        return; 
+    }
 
-  const w_linear = parseInt($('w_linear').value) / 100;
-  const w_nb = parseInt($('w_nb').value) / 100;
-  const w_noise = parseInt($('w_noise').value) / 100;
-  const threshHigh = parseInt($('threshHigh').value) / 100;
-  const threshCrit = parseInt($('threshCrit').value) / 100;
+    const w_linear = parseInt($('w_linear').value) / 100;
+    const w_nb = parseInt($('w_nb').value) / 100;
+    const w_noise = parseInt($('w_noise').value) / 100;
+    const threshHigh = parseInt($('threshHigh').value) / 100;
+    const threshCrit = parseInt($('threshCrit').value) / 100;
 
-  // ================= Cross-profile boosting =================
-function boostRelativeSuspicion(results) {
-  if (results.length < 2) return results;
-  const scores = results.map(r => r.score);
-  const minScore = Math.min(...scores);
+    // ================= Cross-profile boosting =================
+    function boostRelativeSuspicion(results) {
+        if (results.length < 2) return results;
+        const scores = results.map(r => r.score);
+        const minScore = Math.min(...scores);
 
-  results.forEach(r => {
-    const feats = r.meta.features;
-    const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
-    let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
+        results.forEach(r => {
+            const feats = r.meta.features;
+            const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
+            let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
 
-    const relativeHigh = r.score >= minScore + 0.2;
-    let boost = 0;
+            const relativeHigh = r.score >= minScore + 0.2;
+            let boost = 0;
 
-    if (relativeHigh) boost = 0.9;
-    else if (abnormalCount === 1) boost = 0.25;
-    else if (abnormalCount === 2) boost = 0.55;
-    else if (abnormalCount >= 3) boost = 0.75;
+            if (relativeHigh) boost = 0.9;
+            else if (abnormalCount === 1) boost = 0.25;
+            else if (abnormalCount === 2) boost = 0.55;
+            else if (abnormalCount >= 3) boost = 0.75;
 
-    r.score = clamp01(Math.max(r.score, boost));
-  });
+            r.score = clamp01(Math.max(r.score, boost));
+        });
 
-  return results;
-}
+        return results;
+    }
 
+    // ================= Compute raw results =================
+    results = [];
+    for (let p of profiles) {
+        const feats = computeProfileFeatures(p, profiles);
 
-  
-results = []; // clear previous results
+        let lin = await predictLinear(feats);
+        let nb = predictNB(feats);
+        const noise = Math.random() * 0.05;
 
-// Compute raw scores first
-for (let p of profiles) {
-    const feats = computeProfileFeatures(p, profiles);
+        let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
 
-    let lin = await predictLinear(feats);
-    let nb = predictNB(feats);
-    const noise = Math.random() * 0.05;
+        results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+    }
 
-    let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+    // ================= Boost scores =================
+    results = boostRelativeSuspicion(results);
 
-    results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
-}
+    // ================= Render results =================
+    const div = $('resultsCard');
+    div.innerHTML = '';
 
-// Apply boosting after all raw scores are computed
-results = boostRelativeSuspicion(results);
+    results.forEach(r => {
+        const p = r.profile;
+        const score = r.score;
+
+        const card = document.createElement('div');
+        card.className = 'profile';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = (p.name || '?')[0];
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = p.name || 'Unknown';
+
+        const scoreDiv = document.createElement('div');
+        scoreDiv.className = 'score';
+        if (score < threshHigh) scoreDiv.classList.add('low');
+        else if (score < 0.67) scoreDiv.classList.add('med'); // medium below 67%
+        else scoreDiv.classList.add('high');                  // >=67% is high
+        scoreDiv.textContent = (score * 100).toFixed(1) + '%';
+
+        meta.appendChild(h3);
+        meta.appendChild(scoreDiv);
+        card.appendChild(avatar);
+        card.appendChild(meta);
+
+        const exp = document.createElement('details');
+        exp.style.marginTop = '8px';
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(r.meta, null, 2);
+        exp.appendChild(pre);
+        card.appendChild(exp);
+
+        div.appendChild(card);
+    });
+
+    $('summary').textContent = `Processed ${profiles.length} profiles.`;
+});
+
 
 
 // Render results cards safely
