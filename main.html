@@ -246,27 +246,22 @@ function nameSim(a, b, totalProfiles = 1) {
   return Math.pow(score, 2);
 }
 
-
-/* ================= Compute Profile Features ================= */
-/* ================= Compute Profile Features ================= */
-/* ================= Compute Profile Features ================= */
-
 function computeProfileFeatures(p, profiles) {
   const logNorm = x => Math.log1p(x)/Math.log1p(1000);
-  const clamp01 = v => Math.max(0, Math.min(1, v));
-
-  // ------------------ Basic profile features ------------------
-  const bioLen = clamp01((p.bio||"").length / 500);
+  const bioLen = clamp01((p.bio||"").length/500);
   const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
 
+  // Photo-related
   const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
   const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
 
+  // Activity
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
   const times = (p.activity?.logs || []).map(l => l.time || 0);
-  const timingScore = clamp01(std(times) / 10);
+  const timingScore = clamp01(std(times)/10);
 
+  // Credential/Content reuse
   const phoneReuse = profiles.some(q => q.id !== p.id && q.phone === p.phone) ? 1 : 0;
   const emailReuse = profiles.some(q => q.id !== p.id && q.email === p.email) ? 1 : 0;
   const photoContentReuse = profiles.some(q =>
@@ -282,26 +277,24 @@ function computeProfileFeatures(p, profiles) {
     const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
     const inter = bioWords.filter(w => qWords.includes(w)).length;
     const union = new Set([...bioWords, ...qWords]).size;
-    return union ? inter / union : 0;
+    return union ? inter/union : 0;
   }));
 
   // ------------------ Name similarity ------------------
-  const nameSimScore = Math.max(...profiles
-    .filter(q => q.id !== p.id)
-    .map(q => nameSim(p.name || "", q.name || ""))
-  );
+  // Identify matching profiles for phonetic/rhyme similarity
+  const similarProfiles = profiles.filter(q => q.id !== p.id && nameSim(p.name || "", q.name || "") > 0);
 
-  // ------------------ Hard boost for all phonetic/rhyming matches ------------------
-  const HARD_BOOST_MAX = 0.683;                 // 68.3% hard boost
-  let hardBoost = 0;
-  profiles.forEach(q => {
-    if(q.id !== p.id && nameSim(p.name || "", q.name || "") > 0) {
-      // Apply 60% of hard boost if there's any name similarity
-      hardBoost = Math.max(hardBoost, HARD_BOOST_MAX * 0.6);
-    }
-  });
+  // Compute base name similarity (literal + phonetic + rhyme)
+  const nameSimScore = similarProfiles.length
+      ? Math.max(...similarProfiles.map(q => nameSim(p.name || "", q.name || "")))
+      : 0;
 
-  const finalNameScore = clamp01(nameSimScore + hardBoost);
+  // Apply hard boost: 60% of 1.0, scaled by number of matches
+  const hardBoostTotal = 0.683 * 0.6; // 60% of 68.3%
+  const hardBoost = similarProfiles.length > 0 ? hardBoostTotal / similarProfiles.length : 0;
+
+  // Final powered name similarity
+  const poweredNameSim = Math.pow(nameSimScore, 2) + hardBoost;
 
   // ------------------ Final susBoost ------------------
   const susBoost = 0.14 * bioWordSim
@@ -309,10 +302,11 @@ function computeProfileFeatures(p, profiles) {
                  + 0.18 * emailReuse
                  + 0.18 * photoContentReuse
                  + 0.13 * photoFilenameReuse
-                 + 0.50 * finalNameScore; // include 60% hard boost here
+                 + 0.50 * poweredNameSim;
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
+
 
 // --- Run mutual boost across all profiles ---
 // After computing susBoost for all, iterate and if any two names match >0.7, apply the same flatBoost to both
