@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Matrimony Fraud - Aryaman</title>
+<title>Matrimony Fraud Detector</title>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
 <style>
 :root{
@@ -44,52 +44,42 @@ pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;color:var(--muted)}
 <div class="app">
   <header>
     <div>
-      <h1>Matrimony Fraud Detector - made by Aryaman M</h1>
+      <h1>Matrimony Fraud Detector</h1>
       <div class="sub">Upload/paste profiles (JSON). All processing stays in your browser.</div>
     </div>
     <div style="margin-left:auto" class="muted">Local-only</div>
   </header>
-
   <div class="grid">
     <aside class="card">
       <h3>Input</h3>
-
-      <!-- PHOTO UPLOAD MOVED TO TOP -->
       <label>Photo Upload</label>
       <input id="photoUpload" type="file" multiple style="margin-bottom:8px" />
-
       <label>Upload JSON file (array of profiles)</label>
       <input id="fileInput" type="file" accept=".json" />
       <label style="margin-top:8px">Or paste JSON array here:</label>
       <textarea id="profilesInput" rows="8" placeholder='[{"id":"p1","name":"Asha","bio":"...","phone":"+91...","email":"...","photos":["url"],"activity":{"visits":120,"logs":[...]},"verifications":{"aadhaar":true}}, ...]'></textarea>
-
       <div style="display:flex;gap:8px;margin-top:8px">
         <button id="loadBtn">Load Profiles</button>
         <button id="clearBtn" class="small">Clear</button>
       </div>
-
       <h3 style="margin-top:12px">Model & Ensemble</h3>
       <div class="controls-row">
         <button id="trainBtn" class="small">Train Linear Model</button>
       </div>
-
       <label style="margin-top:8px">Ensemble weights</label>
       <div style="display:grid;gap:6px;margin-top:6px">
         <div><input id="w_linear" type="range" min="0" max="100" value="60"><div class="pill" id="w_linear_v">60</div></div>
         <div><input id="w_nb" type="range" min="0" max="100" value="30"><div class="pill" id="w_nb_v">30</div></div>
         <div><input id="w_noise" type="range" min="0" max="100" value="10"><div class="pill" id="w_noise_v">10</div></div>
       </div>
-
       <label style="margin-top:8px">Thresholds</label>
       <div style="display:flex;gap:8px;margin-top:6px">
         <input id="threshHigh" type="number" min="0" max="100" value="55" class="small" style="width:90px"> <div class="muted">High</div>
         <input id="threshCrit" type="number" min="0" max="100" value="80" class="small" style="width:90px"> <div class="muted">Critical</div>
       </div>
-
       <h3 style="margin-top:12px">Privacy</h3>
       <div class="muted">This tool performs all detection in-browser. Do not paste private data without consent.</div>
     </aside>
-
     <main>
       <div class="card" style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -97,11 +87,9 @@ pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;color:var(--muted)}
           <div><span class="pill" id="modelStatus">Model: untrained</span></div>
         </div>
       </div>
-
       <div id="resultsCard" class="card" style="min-height:260px">
-        <div class="muted">Load profiles, train/calibrate (optional), then Run Detection. ⚠️  You acknowledge that this representation may be based on mock data and/or assumptions that may or may not be true. Scores represent the estimated probability of suspicious activity. They are not definitive. This service is provided on an “as-is” basis, and any misuse of the same shall be considered your sole responsibility and intent. You hereby agree to the terms and conditions at: https://github.com/space-contributes/frauddetect_marriage/blob/main/LICENSE.md .</div>
+        <div class="muted">Load profiles, train/calibrate (optional), then Run Detection. ⚠️ You acknowledge that this representation may be based on mock data and/or assumptions that may or may not be true. Scores represent the estimated probability of suspicious activity. They are not definitive. This service is provided on an “as-is” basis, and any misuse of the same shall be considered your sole responsibility and intent. You hereby agree to the terms and conditions at: https://github.com/space-contributes/frauddetect_marriage/blob/main/LICENSE.md .</div>
       </div>
-
       <div class="card" style="margin-top:10px">
         <label>Run detection</label>
         <div style="display:flex;gap:8px;margin-top:8px">
@@ -110,64 +98,18 @@ pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;color:var(--muted)}
         </div>
         <div style="margin-top:8px" class="muted">Feature set: bio similarity, photo reuse, credential overlap, timing variance, visit frequency, aadhaar verification weight.</div>
       </div>
-
       <div class="footer">Tip: best results when you upload many profiles (≥ 10) so cross-profile patterns become meaningful.</div>
     </main>
   </div>
 </div>
-
-<!-- Existing JS logic goes below -->
 <script>
-// Example: show ensemble weight values dynamically
-['linear','nb','noise'].forEach(id=>{
-  const slider=document.getElementById('w_'+id);
-  const display=document.getElementById('w_'+id+'_v');
-  slider.addEventListener('input',()=>display.textContent=slider.value);
-});
-
-// Load, clear, train, run detection logic should be here
-  document.getElementById('photoUpload')
-    .addEventListener('change', e => handlePhotoUploads(e.target.files));
-</script>
-
-    </main>
-  </div>
-</div>
-<script>
-
 /* ================= Utilities ================= */
 const $ = id => document.getElementById(id);
-
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
 function mean(arr){ return arr && arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 function std(arr){ if(!arr||arr.length===0)return 0; const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+Math.pow(x-m,2),0)/arr.length); }
 function hashStr(s){ let h=2166136261|0; for(let i=0;i<s.length;i++) h=Math.imul(h^s.charCodeAt(i),16777619); return (h>>>0).toString(16); }
 function clamp01(v){ return Math.max(0,Math.min(1,v)); }
-
-/* ================= Data & Models ================= */
-let profiles=[], results=[], tfModel=null, nbCalib={meanPos:[], stdPos:[], meanNeg:[], stdNeg:[]};
-const uploadedPhotoHashes = {}; // key: filename, value: base64 hash
-
-/* ================= UI ================= */
-$('w_linear').addEventListener('input',()=>{$('w_linear_v').textContent=$('w_linear').value});
-$('w_nb').addEventListener('input',()=>{$('w_nb_v').textContent=$('w_nb').value});
-$('w_noise').addEventListener('input',()=>{$('w_noise_v').textContent=$('w_noise').value});
-
-/* ================= Load Profiles ================= */
-function loadProfilesFromInput(){
-  let txt=$('profilesInput').value.trim();
-  if(txt){ 
-    try{ 
-      profiles=JSON.parse(txt); 
-      $('summary').textContent=`${profiles.length} profiles loaded.`; 
-    }catch(e){ alert('Invalid JSON'); return; } 
-  }
-  $('resultsCard').innerHTML='<div class="muted">Profiles loaded. Ready to run detection.</div>';
-}
-$('loadBtn').addEventListener('click',loadProfilesFromInput);
-$('clearBtn').addEventListener('click',()=>{profiles=[];$('profilesInput').value='';$('resultsCard').innerHTML='<div class="muted">No profiles loaded.</div>';$('summary').textContent='No profiles loaded.';});
-
-/* ================= Name Similarity ================= */
 function levenshtein(a, b) {
   if (!a || !b) return 0;
   const dp = Array.from({length: a.length + 1}, () => Array(b.length + 1).fill(0));
@@ -181,7 +123,6 @@ function levenshtein(a, b) {
   }
   return dp[a.length][b.length];
 }
-// --- Simple Soundex funtion ---
 function soundex(name) {
   if (!name) return "";
   const a = name.toUpperCase().split('');
@@ -196,74 +137,68 @@ function soundex(name) {
   });
   return (res + "0000").slice(0,4);
 }
-
-// Compute name similarity with all other profiles (mutual)
-
-
-
-/* ================= Multi-photo Upload ================= */
+/* ================= Data & Models ================= */
+let profiles=[], results=[], tfModel=null, nbCalib={meanPos:[], stdPos:[], meanNeg:[], stdNeg:[]};
+const uploadedPhotoHashes = {};
+/* ================= UI Events ================= */
+['linear','nb','noise'].forEach(id=>{
+  const slider=document.getElementById('w_'+id);
+  const display=document.getElementById('w_'+id+'_v');
+  slider.addEventListener('input',()=>display.textContent=slider.value);
+});
+/* ================= Load Profiles ================= */
+function loadProfilesFromInput(){
+  let txt=$('profilesInput').value.trim();
+  if(txt){ 
+    try{ 
+      profiles=JSON.parse(txt); 
+      $('summary').textContent=`${profiles.length} profiles loaded.`; 
+    }catch(e){ alert('Invalid JSON'); return; } 
+  }
+  $('resultsCard').innerHTML='<div class="muted">Profiles loaded. Ready to run detection.</div>';
+}
+$('loadBtn').addEventListener('click',loadProfilesFromInput);
+$('clearBtn').addEventListener('click',()=>{profiles=[];$('profilesInput').value='';$('resultsCard').innerHTML='<div class="muted">No profiles loaded.</div>';$('summary').textContent='No profiles loaded.';});
 function handlePhotoUploads(files){
   [...files].forEach(file=>{
     const reader=new FileReader();
-    reader.onload=e=>{
-      uploadedPhotoHashes[file.name]=hashStr(e.target.result);
-    };
+    reader.onload=e=>{ uploadedPhotoHashes[file.name]=hashStr(e.target.result); };
     reader.readAsDataURL(file);
   });
 }
 document.getElementById('photoUpload').addEventListener('change', e=>handlePhotoUploads(e.target.files));
-// Name similarity function (with phonetic + alphabet/rhyming boost)
+/* ================= Name & Feature Functions ================= */
 function nameSim(a, b, totalProfiles = 1) {
   if (!a || !b) return 0;
-
   const [aFirst, aLast] = a.toLowerCase().split(' ');
   const [bFirst, bLast] = b.toLowerCase().split(' ');
-
-  // Literal similarity
   const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
   const maxLen = Math.max(a.length, b.length);
   const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
-
-  // Partial match boosts
   let partialBoost = 0;
   if(aFirst && bFirst && (aFirst.includes(bFirst) || bFirst.includes(aFirst))) partialBoost += 0.2;
   if(aLast && bLast && (aLast.includes(bLast) || bLast.includes(aLast))) partialBoost += 0.2;
-
-  // Phonetic (Soundex) boost
   const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
-
-  // Rhyme boost on last 2 letters of last name
   const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.25 : 0;
-
-  // Combine all boosts
-  let score = literalScore + partialBoost + phoneticScore + rhymeScore;
-
-  // Scale based on number of profiles (more profiles → less impact)
-  const scaleFactor = 1 / Math.sqrt(totalProfiles); // simple damping
-  score = clamp01(score * scaleFactor);
-
-  // Strong non-linear exaggeration
+  let boost = partialBoost + phoneticScore + rhymeScore;
+  if (boost > 0.5) boost = Math.min(1, boost + 0.5);
+  const scaleFactor = 1 / Math.pow(totalProfiles, 0.25);
+  let score = clamp01((literalScore + boost) * scaleFactor);
   return Math.pow(score, 2);
 }
 function computeProfileFeatures(p, profiles) {
   const clamp01 = v => Math.max(0, Math.min(1, v));
   const logNorm = x => Math.log1p(x)/Math.log1p(1000);
-
   const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
   const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
-
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
   const times = (p.activity?.logs || []).map(l => l.time || 0);
   const timingScore = clamp01(std(times)/10);
-
-  // Credential/Content reuse
   const phoneReuseBoost = profiles.some(q => q.id!==p.id && q.phone===p.phone) ? 1 : 0;
   const emailReuseBoost = profiles.some(q => q.id!==p.id && q.email===p.email) ? 1 : 0;
   const photoContentReuseBoost = profiles.some(q => q.id!==p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph)))) ? 1 : 0;
   const photoFilenameReuseBoost = profiles.some(q => q.id!==p.id && q.photos?.some(ph => p.photos?.includes(ph))) ? 1 : 0;
-
-  // ------------------ Bio similarity ------------------
   const bioWordSim = Math.max(...profiles.map(q => {
     if(q.id === p.id) return 0;
     const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
@@ -271,97 +206,21 @@ function computeProfileFeatures(p, profiles) {
     const union = new Set([...bioWords, ...qWords]).size;
     return union ? inter/union : 0;
   }));
-
-  // ------------------ Name similarity scaled ------------------
   let nameSimSum = 0;
   profiles.forEach(q => {
     if(q.id === p.id) return;
     const sim = nameSim(p.name||"", q.name||"");
     nameSimSum += sim;
   });
-  // Scale by dataset size (more profiles → less per-profile contribution)
   const nameSimScaled = clamp01(nameSimSum / Math.sqrt(profiles.length));
-
-  // ------------------ Final susBoost ------------------
   const susBoost = clamp01(
-    0.6 * nameSimScaled +        // cross-profile similarity (scaled)
-    0.2 * bioWordSim +
-    0.2 * phoneReuseBoost +
-    0.15 * emailReuseBoost +
-    0.15 * photoContentReuseBoost +
-    0.1 * photoFilenameReuseBoost
+    0.6 * nameSimScaled + 0.2 * bioWordSim + 0.2 * phoneReuseBoost +
+    0.15 * emailReuseBoost + 0.15 * photoContentReuseBoost + 0.1 * photoFilenameReuseBoost
   );
-
   const bioLen = clamp01((p.bio||"").length/500);
   const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
-
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
-function applyMutualBoost(results) {
-  if(results.length < 2) return results;
-
-  for(let i=0; i<results.length; i++) {
-    for(let j=i+1; j<results.length; j++) {
-      const sim = nameSim(results[i].profile.name, results[j].profile.name);
-      if(sim <= 0) continue;
-
-      // Scaled boost based on similarity and dataset size
-      const scaleFactor = 1 / Math.sqrt(results.length); // damping for large datasets
-      const boost = sim * 0.6 * scaleFactor;             // 60% of max possible boost
-
-      results[i].score = clamp01(results[i].score + boost);
-      results[j].score = clamp01(results[j].score + boost);
-    }
-  }
-
-  return results;
-}
-
-
-  
-  /* ================= Name similarity helper ================= */
-function nameSim(a, b, totalProfiles = 1) {
-  if (!a || !b) return 0;
-
-  const [aFirst, aLast] = a.toLowerCase().split(' ');
-  const [bFirst, bLast] = b.toLowerCase().split(' ');
-
-  // Literal similarity
-  const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
-  const maxLen = Math.max(a.length, b.length);
-  const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
-
-  // Partial match boosts
-  let partialBoost = 0;
-  if (aFirst && bFirst && (aFirst.includes(bFirst) || bFirst.includes(aFirst))) partialBoost += 0.2;
-  if (aLast && bLast && (aLast.includes(bLast) || bLast.includes(aLast))) partialBoost += 0.2;
-
-  // Phonetic (Soundex) boost
-  const phoneticScore = (soundex(aLast || a) === soundex(bLast || b)) ? 0.3 : 0;
-
-  // Rhyme boost on last 2 letters of last name
-  const rhymeScore = ((aLast || '').slice(-2) === (bLast || '').slice(-2)) ? 0.25 : 0;
-
-  // Combine all boosts
-  let score = literalScore + partialBoost + phoneticScore + rhymeScore;
-
-  // Scale based on number of profiles (more profiles → less impact)
-// Partial / phonetic / rhyme base score
-let boost = partialBoost + phoneticScore + rhymeScore;
-
-// Strong match override: if phonetic + rhyme > 0.5, apply hard boost
-if (boost > 0.5) boost = Math.min(1, boost + 0.5);
-
-// Scale for number of profiles (damping), but less aggressive
-const scaleFactor = 1 / Math.pow(totalProfiles, 0.25); // sqrt -> 4th root
-score = clamp01((literalScore + boost) * scaleFactor);
-
-
-  // Strong non-linear exaggeration
-  return Math.pow(score, 2);
-}
-
-
 /* ================= Train Linear + Naive Bayes ================= */
 async function trainLinearAndNB(){
   if(!profiles||!profiles.length){ alert('Load profiles first'); return; }
@@ -382,7 +241,7 @@ async function trainLinearAndNB(){
   }
   alert('Linear + Naive Bayes trained deterministically using susBoost');
 }
-
+$('trainBtn').addEventListener('click',trainLinearAndNB);
 /* ================= Predict Functions ================= */
 async function predictLinear(feats){
   if(!tfModel) return 0.5;
@@ -391,7 +250,6 @@ async function predictLinear(feats){
   t.dispose();
   return clamp(out[0],0,1);
 }
-
 function predictNB(features){
   if(!nbCalib) return 0.5;
   const gaussProb=(x,mu,sigma)=>sigma===0?(x===mu?1:0):(1/(sigma*Math.sqrt(2*Math.PI)))*Math.exp(-0.5*Math.pow((x-mu)/sigma,2));
@@ -399,157 +257,84 @@ function predictNB(features){
   for(let i=0;i<features.length;i++){ pPos*=gaussProb(features[i],nbCalib.meanPos[i],nbCalib.stdPos[i]); pNeg*=gaussProb(features[i],nbCalib.meanNeg[i],nbCalib.stdNeg[i]); }
   return pPos/(pPos+pNeg);
 }
-/* ================= Attach Train Button ================= */
-$('trainBtn').addEventListener('click',trainLinearAndNB);
-
 /* ================= Run Detection ================= */
 $('runBtn').addEventListener('click', async () => {
     if (!profiles.length) { 
         alert('Load profiles first'); 
         return; 
     }
-
     const w_linear = parseInt($('w_linear').value) / 100;
     const w_nb = parseInt($('w_nb').value) / 100;
     const w_noise = parseInt($('w_noise').value) / 100;
     const threshHigh = parseInt($('threshHigh').value) / 100;
     const threshCrit = parseInt($('threshCrit').value) / 100;
-
-    // ================= Cross-profile boosting =================
     function boostRelativeSuspicion(results) {
         if (results.length < 2) return results;
         const scores = results.map(r => r.score);
         const minScore = Math.min(...scores);
-
         results.forEach(r => {
             const feats = r.meta.features;
             const meanFeats = feats.map((_,i) => mean(results.map(rr => rr.meta.features[i])));
             let abnormalCount = feats.reduce((cnt, val, i) => cnt + (val > meanFeats[i] + 0.2 ? 1 : 0), 0);
-
             const relativeHigh = r.score >= minScore + 0.2;
             let boost = 0;
-
             if (relativeHigh) boost = 0.9;
             else if (abnormalCount === 1) boost = 0.25;
             else if (abnormalCount === 2) boost = 0.55;
             else if (abnormalCount >= 3) boost = 0.75;
-
             r.score = clamp01(Math.max(r.score, boost));
         });
-
         return results;
     }
-
-    // ================= Compute raw results =================
     results = [];
     for (let p of profiles) {
         const feats = computeProfileFeatures(p, profiles);
-
         let lin = await predictLinear(feats);
         let nb = predictNB(feats);
         const noise = Math.random() * 0.05;
-
         let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
-
         results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
     }
-
-    // ================= Boost scores =================
     results = boostRelativeSuspicion(results);
-
-    // ================= Render results =================
+    results.sort((a,b) => b.score - a.score);
     const div = $('resultsCard');
     div.innerHTML = '';
-
     results.forEach(r => {
         const p = r.profile;
         const score = r.score;
-
         const card = document.createElement('div');
         card.className = 'profile';
-
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
         avatar.textContent = (p.name || '?')[0];
-
         const meta = document.createElement('div');
         meta.className = 'meta';
-
         const h3 = document.createElement('h3');
         h3.textContent = p.name || 'Unknown';
-
         const scoreDiv = document.createElement('div');
         scoreDiv.className = 'score';
         if (score < threshHigh) scoreDiv.classList.add('low');
-        else if (score < 0.67) scoreDiv.classList.add('med'); // medium below 67%
-        else scoreDiv.classList.add('high');                  // >=67% is high
+        else if (score < threshCrit) scoreDiv.classList.add('med'); 
+        else scoreDiv.classList.add('high');                  
         scoreDiv.textContent = (score * 100).toFixed(1) + '%';
-
         meta.appendChild(h3);
         meta.appendChild(scoreDiv);
-        card.appendChild(avatar);
-        card.appendChild(meta);
-
+        const reasons = document.createElement('div');
+        reasons.className = 'reasons';
+        reasons.textContent = `Bio Sim: ${r.meta.features[5].toFixed(2)}, Name Sim: ${r.meta.features[0].toFixed(2)}`;
+        meta.appendChild(reasons);
         const exp = document.createElement('details');
         exp.style.marginTop = '8px';
         const pre = document.createElement('pre');
         pre.textContent = JSON.stringify(r.meta, null, 2);
         exp.appendChild(pre);
+        card.appendChild(avatar);
+        card.appendChild(meta);
         card.appendChild(exp);
-
         div.appendChild(card);
     });
-
     $('summary').textContent = `Processed ${profiles.length} profiles.`;
 });
-
-
-
-// Render results cards safely
-const div = $('resultsCard');
-div.innerHTML = '';
-
-results.forEach(r => {
-  const p = r.profile;
-  const score = r.score;
-
-  const card = document.createElement('div');
-  card.className = 'profile';
-
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar';
-  avatar.textContent = (p.name || '?')[0];
-
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-
-  const h3 = document.createElement('h3');
-  h3.textContent = p.name || 'Unknown';
-
-  const scoreDiv = document.createElement('div');
-  scoreDiv.className = 'score';
-  if (score < threshHigh) scoreDiv.classList.add('low');
-  else if (score < 0.67) scoreDiv.classList.add('med'); // medium below 67%
-  else scoreDiv.classList.add('high');                  // >=67% is high
-
-
-  meta.appendChild(h3);
-  meta.appendChild(scoreDiv);
-  card.appendChild(avatar);
-  card.appendChild(meta);
-
-  const exp = document.createElement('details');
-  exp.style.marginTop = '8px';
-  const pre = document.createElement('pre');
-  pre.textContent = JSON.stringify(r.meta, null, 2);
-  exp.appendChild(pre);
-  card.appendChild(exp);
-
-  div.appendChild(card);
-});
-
-$('summary').textContent = `Processed ${profiles.length} profiles.`;
-
 /* ================ Export Results ================ */
 $('exportBtn').addEventListener('click',()=>{
   if(!results.length){ alert('Run detection first'); return; }
@@ -562,10 +347,3 @@ $('exportBtn').addEventListener('click',()=>{
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
