@@ -241,7 +241,7 @@ function computeProfileFeatures(p,profiles){
   const photoFilenameReuse=profiles.some(q=>q.id!==p.id&&q.photos?.some(ph=>p.photos?.includes(ph)))?1:0;
   const bioWordSim=Math.max(...profiles.map(q=>{if(q.id===p.id)return 0; const qWords=(q.bio||"").toLowerCase().split(/\W+/).filter(Boolean); const inter=bioWords.filter(w=>qWords.includes(w)).length; const union=new Set([...bioWords,...qWords]).size; return union?inter/union:0;}));
   const nameSimScore=Math.max(...profiles.map(q=>q.id!==p.id?nameSim(p.name||"",q.name||""):0));
-  const susBoost=0.18*bioWordSim+0.20*phoneReuse+0.18*emailReuse+0.18*photoContentReuse+0.13*photoFilenameReuse+0.13*nameSimScore;
+  const susBoost = 0.14*bioWordSim + 0.20*phoneReuse + 0.18*emailReuse + 0.18*photoContentReuse + 0.13*photoFilenameReuse + 0.25*nameSimScore;
   return [bioLen,photoHashCount,aadhaarWeight,activityScore,timingScore,susBoost];
 }
 
