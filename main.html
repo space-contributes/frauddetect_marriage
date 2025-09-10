@@ -198,18 +198,45 @@ function soundex(name) {
 }
 
 // --- Modify nameSim to include phonetic similarity ---
-function nameSim(a,b){
-  if(!a||!b) return 0;
-  const dist=levenshtein(a.toLowerCase(),b.toLowerCase());
-  const maxLen=Math.max(a.length,b.length);
-  const literalScore = maxLen===0?0:1-dist/maxLen;
+// --- Improved Name Similarity with Phonetic Boost ---
+// --- Improved Name Similarity with Phonetic Boost ---
+function nameSim(a, b) {
+  if (!a || !b) return 0;
 
-  // phonetic boost
-  const phoneticA = soundex(a), phoneticB = soundex(b);
-  const phoneticScore = phoneticA === phoneticB ? 0.3 : 0;
+  const aLow = a.toLowerCase();
+  const bLow = b.toLowerCase();
 
-  return clamp01(literalScore + phoneticScore); // boost by 0.3 if they sound similar
+  // 1️⃣ Levenshtein literal similarity
+  const dist = levenshtein(aLow, bLow);
+  const maxLen = Math.max(aLow.length, bLow.length);
+  const literalScore = maxLen === 0 ? 0 : 1 - dist / maxLen;
+
+  // 2️⃣ Letter overlap fraction
+  const lettersA = aLow.split('').filter(c => /[a-z]/.test(c));
+  const lettersB = bLow.split('').filter(c => /[a-z]/.test(c));
+  const intersect = lettersA.filter(c => lettersB.includes(c)).length;
+  const union = new Set([...lettersA, ...lettersB]).size || 1;
+  const letterScore = intersect / union;
+
+  // 3️⃣ Phonetic similarity (Soundex)
+  function phoneticSim(x, y) {
+    const sa = soundex(x);
+    const sb = soundex(y);
+    let matches = 0;
+    for (let i = 0; i < Math.min(sa.length, sb.length); i++) {
+      if (sa[i] === sb[i]) matches++;
+    }
+    return matches / sa.length;
+  }
+  const phoneticScore = phoneticSim(a, b);
+
+  // 4️⃣ Combine aggressively for hard boost
+  const combined = literalScore * 0.4 + letterScore * 0.3 + phoneticScore * 0.8;
+
+  return clamp01(combined);
 }
+
+
 
 
 /* ================= Multi-photo Upload ================= */
@@ -241,7 +268,13 @@ function computeProfileFeatures(p,profiles){
   const photoFilenameReuse=profiles.some(q=>q.id!==p.id&&q.photos?.some(ph=>p.photos?.includes(ph)))?1:0;
   const bioWordSim=Math.max(...profiles.map(q=>{if(q.id===p.id)return 0; const qWords=(q.bio||"").toLowerCase().split(/\W+/).filter(Boolean); const inter=bioWords.filter(w=>qWords.includes(w)).length; const union=new Set([...bioWords,...qWords]).size; return union?inter/union:0;}));
   const nameSimScore=Math.max(...profiles.map(q=>q.id!==p.id?nameSim(p.name||"",q.name||""):0));
-  const susBoost = 0.14*bioWordSim + 0.20*phoneReuse + 0.18*emailReuse + 0.18*photoContentReuse + 0.13*photoFilenameReuse + 0.25*nameSimScore;
+  const susBoost = 0.14 * bioWordSim
+               + 0.20 * phoneReuse
+               + 0.18 * emailReuse
+               + 0.18 * photoContentReuse
+               + 0.13 * photoFilenameReuse
+               + 0.50 * Math.pow(nameSimScore, 2); // squared to amplify strong name similarity
+
   return [bioLen,photoHashCount,aadhaarWeight,activityScore,timingScore,susBoost];
 }
 
