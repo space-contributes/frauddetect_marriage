@@ -250,47 +250,68 @@ function computeProfileFeatures(p, profiles) {
   const bioLen = clamp01((p.bio||"").length/500);
   const bioWords = (p.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
 
-  const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph]||hashStr(ph));
-  const photoHashCount = clamp01([...new Set(photoHashes)].length/5);
+  // Photo hashes
+  const photoHashes = (p.photos||[]).map(ph => uploadedPhotoHashes[ph] || hashStr(ph));
+  const photoHashCount = clamp01([...new Set(photoHashes)].length / 5);
   const aadhaarWeight = p.verifications?.aadhaar ? 1 : 0;
 
+  // Activity
   const activityScore = clamp01(logNorm(p.activity?.visits || p.visits || 0));
-  const times = (p.activity?.logs || []).map(l=>l.time||0);
+  const times = (p.activity?.logs || []).map(l => l.time || 0);
   const timingScore = clamp01(std(times)/10);
 
-  const phoneReuse = profiles.some(q=>q.id!==p.id && q.phone===p.phone)?1:0;
-  const emailReuse = profiles.some(q=>q.id!==p.id && q.email===p.email)?1:0;
-  const photoContentReuse = profiles.some(q=>q.id!==p.id && q.photos?.some(ph=>(uploadedPhotoHashes[ph]||hashStr(ph)) && photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph))))?1:0;
-  const photoFilenameReuse = profiles.some(q=>q.id!==p.id && q.photos?.some(ph=>p.photos?.includes(ph)))?1:0;
-
-  const bioWordSim = Math.max(...profiles.map(q=>{
-    if(q.id===p.id) return 0;
-    const qWords=(q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
-    const inter = bioWords.filter(w=>qWords.includes(w)).length;
-    const union = new Set([...bioWords,...qWords]).size;
-    return union?inter/union:0;
+  // ------------------ Cross-profile matches ------------------
+  // Bio similarity
+  const bioWordSim = Math.max(...profiles.map(q => {
+    if(q.id === p.id) return 0;
+    const qWords = (q.bio||"").toLowerCase().split(/\W+/).filter(Boolean);
+    const inter = bioWords.filter(w => qWords.includes(w)).length;
+    const union = new Set([...bioWords, ...qWords]).size;
+    return union ? inter/union : 0;
   }));
 
-  // Name similarity only for rhyming/phonetic matches
-  const similarProfiles = profiles.filter(q=>q.id!==p.id && nameSim(p.name||"",q.name||"")>0);
-  const nameSimScore = Math.max(...similarProfiles.map(q=>nameSim(p.name||"",q.name||"")),0);
+  // Name similarity
+  const nameSimScore = Math.max(...profiles
+    .filter(q => q.id !== p.id)
+    .map(q => nameSim(p.name || "", q.name || ""))
+  );
 
-  // Hard flat boost applied only to similar names
-  const hardBoost = similarProfiles.length>0 ? 0.683/1.5 : 0; // ~0.4553
-  const poweredNameSim = Math.pow(nameSimScore,2) + hardBoost;
+  // ------------------ Combined Bio + Name boost ------------------
+  const combinedSim = Math.max(...profiles
+    .filter(q => q.id !== p.id)
+    .map(q => clamp01(bioWordSim + nameSim(p.name||"", q.name||"")))
+  );
 
-let susBoost = 0.14*bioWordSim
-             + 0.20*phoneReuse
-             + 0.18*emailReuse
-             + 0.18*photoContentReuse
-             + 0.13*photoFilenameReuse
-             + 0.50*Math.pow(nameSimScore,2);
+  // ------------------ Phone reuse boost ------------------
+  const phoneReuseBoost = Math.max(...profiles
+    .filter(q => q.id !== p.id && q.phone === p.phone)
+    .map(() => 1.0) // hard boost for exact match
+  ) || 0;
 
-// Hard flat boost applied separately for matching names
-if(similarProfiles.length > 0){
-    susBoost += 0.455; // ~45% flat boost
-}
+  // ------------------ Email reuse boost ------------------
+  const emailReuseBoost = Math.max(...profiles
+    .filter(q => q.id !== p.id && q.email === p.email)
+    .map(() => 1.0)
+  ) || 0;
 
+  // ------------------ Photo content reuse boost ------------------
+  const photoContentReuseBoost = Math.max(...profiles
+    .filter(q => q.id !== p.id && q.photos?.some(ph => photoHashes.includes(uploadedPhotoHashes[ph]||hashStr(ph))))
+    .map(() => 1.0)
+  ) || 0;
+
+  // ------------------ Photo filename reuse boost ------------------
+  const photoFilenameReuseBoost = Math.max(...profiles
+    .filter(q => q.id !== p.id && q.photos?.some(ph => p.photos?.includes(ph)))
+    .map(() => 1.0)
+  ) || 0;
+
+  // ------------------ Final susBoost ------------------
+  const susBoost = 0.40 * combinedSim +      // bio + name
+                   0.20 * phoneReuseBoost + 
+                   0.15 * emailReuseBoost +
+                   0.15 * photoContentReuseBoost +
+                   0.10 * photoFilenameReuseBoost;
 
   return [bioLen, photoHashCount, aadhaarWeight, activityScore, timingScore, susBoost];
 }
