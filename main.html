@@ -325,12 +325,24 @@ function boostRelativeSuspicion(results) {
 
 
   
-  results = [];
+results = []; // clear previous results
 
+// Compute raw scores first
+for (let p of profiles) {
+    const feats = computeProfileFeatures(p, profiles);
 
+    let lin = await predictLinear(feats);
+    let nb = predictNB(feats);
+    const noise = Math.random() * 0.05;
 
-// <<< IMPORTANT: BOOST AFTER LOOP
+    let score = clamp(w_linear * lin + w_nb * nb + w_noise * noise, 0, 1);
+
+    results.push({ profile: p, score, meta: { linear: lin, nb: nb, features: feats } });
+}
+
+// Apply boosting after all raw scores are computed
 results = boostRelativeSuspicion(results);
+
 
 // Render results cards safely
 const div = $('resultsCard');
@@ -356,9 +368,9 @@ results.forEach(r => {
   const scoreDiv = document.createElement('div');
   scoreDiv.className = 'score';
   if (score < threshHigh) scoreDiv.classList.add('low');
-  else if (score < threshCrit) scoreDiv.classList.add('med');
-  else scoreDiv.classList.add('high');
-  scoreDiv.textContent = (score * 100).toFixed(1) + '%';
+  else if (score < 0.67) scoreDiv.classList.add('med'); // medium below 67%
+  else scoreDiv.classList.add('high');                  // >=67% is high
+
 
   meta.appendChild(h3);
   meta.appendChild(scoreDiv);
