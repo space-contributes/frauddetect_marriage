@@ -201,6 +201,7 @@ By using **Matrimony Fraud Detector**, you agree to the terms in **[LICENSE.md](
 
 
 This material is **informational and research-focused**, not intended to disparage or harm any individual or company.
+All names, logos, and brands or entities mentioned in this project are the property of their respective owners. References are made solely for descriptive, educational, and comparative purposes, and even indirect references and other types of references like INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION regarding, LOSS OF PROFITS, LOSS OF DATA, BUSINESS INTERRUPTION, OR LOSS OF BUSINESS OPPORTUNITIES.
 
 
 --- 
