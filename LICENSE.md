@@ -112,6 +112,11 @@ Use of this tool, product, service, or material (“Tool”) is undertaken solel
 
 The author, provider, or distributor of the Tool (“Provider”) shall not be liable for any security vulnerabilities, weaknesses, breaches, or other issues arising from the use, deployment, or implementation of the Tool. While reasonable efforts may be employed to ensure quality, integrity, and security, no express or implied warranty is made regarding the absence of vulnerabilities or defects. All risks associated with the presence or exploitation of such vulnerabilities are assumed entirely by the user.
 
+
+
+This material is **informational and research-focused**, not intended to disparage or harm any individual or company.
+All names, logos, and brands or entities mentioned in this project are the property of their respective owners. References are made solely for descriptive, educational, and comparative purposes, and even indirect references and other types of references like INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION regarding, LOSS OF PROFITS, LOSS OF DATA, BUSINESS INTERRUPTION, OR LOSS OF BUSINESS OPPORTUNITIES.
+
 The Provider expressly disclaims any liability for damages, losses, or operational disruptions, whether arising from known or unknown security flaws, digital or non-digital threats, or any other issues related to the Tool. 
 Additionally, the Provider shall not be held responsible for any security incidents, unauthorized access, data breaches, or other issues arising during or resulting from data collection, storage, transmission, or processing. Users and data controllers assume full responsibility for assessing, mitigating, and managing all risks associated with such activities. No warranty—express or implied—is provided regarding the security, accuracy, or completeness of data handled using the Tool.
 
