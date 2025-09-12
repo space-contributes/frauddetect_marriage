@@ -76,7 +76,7 @@ Any issues, concerns, or clarifications regarding this project may be directed t
 
 ### Independent Development
 
-Arby Audio 3D is an **independent, open-source project**. While it draws **inspiration from cinematic-grade audio technologies** such as object-based surround and spatial audio systems, it has **no official affiliation with any company, brand, or trademark holder**.
+Matrimony Fraud Detector is an **independent, open-source project**. While it draws **inspiration from fraud-detection-grade technologies**. It has **no official affiliation with any company, brand, or trademark holder**.
 
 ### Trademark Notice
 
